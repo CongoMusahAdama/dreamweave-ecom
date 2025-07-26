@@ -1,0 +1,88 @@
+import { useState } from 'react';
+import { Menu, X, ShoppingBag, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navItems = [
+    { name: 'Shop', href: '/shop' },
+    { name: 'Dream Log', href: '/dream-log' },
+    { name: 'About', href: '/about' },
+  ];
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center">
+            <a href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+              <img 
+                src="/lovable-uploads/5b904431-50ea-45f9-a2e1-42008eaf5466.png" 
+                alt="HARV DREAMS" 
+                className="h-8 w-auto"
+              />
+            </a>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <a
+                key={item.name}
+                href={item.href}
+                className="text-sm font-medium text-foreground hover:text-army-green transition-colors relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-army-green after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left"
+              >
+                {item.name}
+              </a>
+            ))}
+          </nav>
+
+          {/* Right side icons */}
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon" className="hover:bg-muted">
+              <Search className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="hover:bg-muted relative">
+              <ShoppingBag className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-army-green rounded-full text-xs text-white flex items-center justify-center">
+                0
+              </span>
+            </Button>
+
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden hover:bg-muted"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border animate-fade-in">
+            <nav className="flex flex-col space-y-4">
+              {navItems.map((item) => (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-sm font-medium text-foreground hover:text-army-green transition-colors px-2 py-1"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </a>
+              ))}
+            </nav>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
+
+export default Header;
