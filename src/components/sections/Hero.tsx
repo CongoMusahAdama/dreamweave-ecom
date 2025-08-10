@@ -7,8 +7,8 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 -top-20">
         <img 
-          src="/lovable-uploads/44a15bbd-361a-4df5-8eef-e8d168d56d3e.png" 
-          alt="HARV DREAMS lifestyle" 
+          src="/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png" 
+          alt="HARV DREAMS lifestyle"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/60" />
@@ -19,7 +19,7 @@ const Hero = () => {
           {/* Main Heading */}
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
             DREAM
-            <span className="block text-foreground animate-typing">BOLDLY</span>
+            <span className="block text-army-green">BOLDLY</span>
             <span className="block">WEAR DREAMS</span>
           </h1>
           
