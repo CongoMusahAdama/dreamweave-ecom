@@ -6,8 +6,8 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navItems = [
-    { name: 'Shop', href: '/shop' },
-    { name: 'Dream Log', href: '/dream-log' },
+    { name: 'Shop', href: '/gallery' },
+    { name: 'Gallery', href: '/gallery' },
     { name: 'About', href: '/about' },
   ];
 
@@ -21,7 +21,7 @@ const Header = () => {
               <img 
                 src="/lovable-uploads/5b904431-50ea-45f9-a2e1-42008eaf5466.png" 
                 alt="HARV DREAMS" 
-                className="h-8 w-auto"
+                className="h-10 w-auto"
               />
             </a>
           </div>
