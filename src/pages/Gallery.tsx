@@ -12,58 +12,56 @@ const Gallery = () => {
       id: 1,
       name: "Classic Dreams Tee",
       price: "₵45",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
+      image: "/lovable-uploads/44a15bbd-361a-4df5-8eef-e8d168d56d3e.png",
       category: "tees",
       type: "product"
     },
     {
       id: 2,
-      name: "Dreamer Hoodie",
-      price: "₵85",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
-      category: "hoodies",
+      name: "HARV DREAMS Baseball Tee",
+      price: "₵65",
+      image: "/lovable-uploads/f5d50ca7-4513-4a16-8d89-1529c33c6ada.png",
+      category: "tees",
       type: "product"
     },
     {
       id: 3,
-      name: "Vision Cap",
-      price: "₵25",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
-      category: "accessories",
+      name: "Vision Cap & Tee",
+      price: "₵85",
+      image: "/lovable-uploads/588488c4-1f02-4461-8bea-64b6c0de61a1.png",
+      category: "tees",
       type: "product"
     },
     {
       id: 4,
-      name: "Street Dreams",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
-      category: "lifestyle",
-      type: "lifestyle",
-      caption: "Living the dream in the streets of Takoradi"
+      name: "Street Dreams Jersey",
+      price: "₵75",
+      image: "/lovable-uploads/228d5180-0a9a-4507-9a32-0bb021c9b4d1.png",
+      category: "jerseys",
+      type: "product"
     },
     {
       id: 5,
       name: "Urban Vision",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
+      image: "/lovable-uploads/088d637d-0061-45e6-94fd-3c2aba6d8cd2.png",
       category: "lifestyle",
       type: "lifestyle",
-      caption: "Bold dreams, bold moves"
+      caption: "Dreaming bold in the streets of Ghana"
     },
     {
       id: 6,
-      name: "Future Dreams Sweatshirt",
-      price: "₵65",
-      image: "/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png",
-      category: "sweatshirts",
-      type: "product"
+      name: "Street Style",
+      image: "/lovable-uploads/44a15bbd-361a-4df5-8eef-e8d168d56d3e.png",
+      category: "lifestyle", 
+      type: "lifestyle",
+      caption: "Living the dream in industrial Ghana"
     }
   ];
 
   const categories = [
     { key: 'all', label: 'All' },
     { key: 'tees', label: 'T-Shirts' },
-    { key: 'hoodies', label: 'Hoodies' },
-    { key: 'sweatshirts', label: 'Sweatshirts' },
-    { key: 'accessories', label: 'Accessories' },
+    { key: 'jerseys', label: 'Jerseys' },
     { key: 'lifestyle', label: 'Lifestyle' }
   ];
 

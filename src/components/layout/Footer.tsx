@@ -49,6 +49,32 @@ const Footer = () => {
           </div>
         </div>
 
+        {/* Newsletter Section */}
+        <div className="border-t border-primary-foreground/20 pt-8 mb-8">
+          <div className="max-w-2xl mx-auto text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              JOIN THE <span className="text-primary-foreground/80">DREAM</span>
+            </h2>
+            <p className="text-primary-foreground/80 mb-6">
+              Be the first to know about new drops, exclusive campaigns, and behind-the-scenes stories.
+            </p>
+            <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 px-4 py-3 rounded-lg flex-1"
+                required
+              />
+              <button 
+                type="submit"
+                className="bg-white text-primary hover:bg-primary-foreground/90 font-semibold px-8 py-3 rounded-lg whitespace-nowrap transition-colors"
+              >
+                Subscribe
+              </button>
+            </form>
+          </div>
+        </div>
+
         {/* Contact Info */}
         <div className="border-t border-primary-foreground/20 pt-8 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">

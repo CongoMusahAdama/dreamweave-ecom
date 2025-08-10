@@ -131,3 +131,30 @@
   h3 { @apply text-lg md:text-xl; }
   p { @apply text-sm md:text-base; }
 }
+
+/* Typing Animation */
+@keyframes typing {
+  0%, 90%, 100% {
+    width: 0;
+  }
+  30%, 60% {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    border-color: transparent;
+  }
+  51%, 100% {
+    border-color: currentColor;
+  }
+}
+
+.animate-typing {
+  overflow: hidden;
+  border-right: 2px solid;
+  white-space: nowrap;
+  animation: typing 4s infinite, blink 1s infinite;
+  display: inline-block;
+}
