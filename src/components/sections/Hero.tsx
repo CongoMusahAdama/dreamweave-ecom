@@ -5,7 +5,7 @@ const Hero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
-      <div className="absolute inset-0 -top-24">
+      <div className="absolute inset-0 -top-32">
         <img 
           src="/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png" 
           alt="HARV DREAMS lifestyle"
