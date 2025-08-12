@@ -1,5 +1,6 @@
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
+import ScrollToTop from '@/components/ui/scroll-to-top';
 
 const About = () => {
   return (
@@ -11,7 +12,7 @@ const About = () => {
         <section className="py-16 md:py-24">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8 animate-fade-in">
                 About HARV DREAMS
               </h1>
               <div className="text-base md:text-lg text-muted-foreground leading-relaxed space-y-6">
@@ -54,13 +55,13 @@ const About = () => {
         <section className="py-16 bg-muted/20">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center mb-16">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 animate-fade-in">
                 Meet the Founder
               </h2>
               <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
                 <div className="w-64 h-64 rounded-lg overflow-hidden">
                   <img 
-                    src="/lovable-uploads/4612cdc2-c834-4bca-96a1-d73391c23439.png"
+                    src="/lovable-uploads/088d637d-0061-45e6-94fd-3c2aba6d8cd2.png"
                     alt="Charles Harvey - HARV DREAMS Founder"
                     className="w-full h-full object-cover"
                   />
@@ -78,7 +79,7 @@ const About = () => {
             </div>
 
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground mb-12">
+              <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground mb-12 animate-fade-in">
                 What We Stand For
               </h2>
               
@@ -119,6 +120,7 @@ const About = () => {
       </main>
       
       <Footer />
+      <ScrollToTop />
     </div>
   );
 };

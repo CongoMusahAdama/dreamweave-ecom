@@ -7,31 +7,31 @@ const FeaturedProducts = () => {
   const featuredProducts = [
     {
       id: 1,
-      name: "Dream Manifest Hoodie",
-      price: "₵250",
-      image: "/api/placeholder/400/500",
-      hoverImage: "/api/placeholder/400/500"
+      name: "Dream Hoodie",
+      price: "₵150",
+      image: "/lovable-uploads/4612cdc2-c834-4bca-96a1-d73391c23439.png",
+      hoverImage: "/lovable-uploads/44a15bbd-361a-4df5-8eef-e8d168d56d3e.png"
     },
     {
       id: 2,
-      name: "Vision Tee - Black",
-      price: "₵120",
-      image: "/api/placeholder/400/500",
-      hoverImage: "/api/placeholder/400/500"
+      name: "Vision Tee",
+      price: "₵85",
+      image: "/lovable-uploads/f5d50ca7-4513-4a16-8d89-1529c33c6ada.png",
+      hoverImage: "/lovable-uploads/588488c4-1f02-4461-8bea-64b6c0de61a1.png"
     },
     {
       id: 3,
-      name: "Chase Dreams Cap",
-      price: "₵80",
-      image: "/api/placeholder/400/500",
-      hoverImage: "/api/placeholder/400/500"
+      name: "Hustle Joggers",
+      price: "₵120",
+      image: "/lovable-uploads/228d5180-0a9a-4507-9a32-0bb021c9b4d1.png",
+      hoverImage: "/lovable-uploads/4612cdc2-c834-4bca-96a1-d73391c23439.png"
     },
     {
       id: 4,
-      name: "Hustle Hard Crewneck",
-      price: "₵200",
-      image: "/api/placeholder/400/500",
-      hoverImage: "/api/placeholder/400/500"
+      name: "Ambition Cap",
+      price: "₵65",
+      image: "/lovable-uploads/588488c4-1f02-4461-8bea-64b6c0de61a1.png",
+      hoverImage: "/lovable-uploads/f5d50ca7-4513-4a16-8d89-1529c33c6ada.png"
     }
   ];
 
@@ -40,7 +40,7 @@ const FeaturedProducts = () => {
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-16 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in">
             FEATURED <span className="text-army-green">DREAMS</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -60,9 +60,11 @@ const FeaturedProducts = () => {
               <CardContent className="p-0">
                 {/* Product Image */}
                 <div className="relative overflow-hidden rounded-t-lg aspect-[4/5] bg-muted">
-                  <div className="w-full h-full bg-gradient-to-br from-muted to-army-green/10 flex items-center justify-center">
-                    <div className="text-muted-foreground text-sm">Product Image</div>
-                  </div>
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
                   
                   {/* Quick View Overlay */}
                   <div className="absolute inset-0 bg-primary/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -96,6 +98,7 @@ const FeaturedProducts = () => {
             size="lg" 
             variant="outline"
             className="border-army-green text-army-green hover:bg-army-green hover:text-white px-8 py-6 text-lg font-semibold transition-all duration-300 hover:scale-105 group"
+            onClick={() => window.location.href = '/gallery'}
           >
             View All Products
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />

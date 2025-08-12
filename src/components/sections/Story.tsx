@@ -3,7 +3,7 @@ const Story = () => {
     <section className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 animate-fade-in">
             OUR STORY
           </h2>
           <div className="text-base md:text-lg text-muted-foreground leading-relaxed space-y-6">

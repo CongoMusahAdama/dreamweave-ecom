@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
+import ScrollToTop from '@/components/ui/scroll-to-top';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -83,7 +84,7 @@ const Gallery = () => {
         <section className="py-12 bg-muted/20">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in">
                 Gallery
               </h1>
               <p className="text-base text-muted-foreground max-w-2xl mx-auto">
@@ -165,6 +166,7 @@ const Gallery = () => {
       </main>
       
       <Footer />
+      <ScrollToTop />
     </div>
   );
 };

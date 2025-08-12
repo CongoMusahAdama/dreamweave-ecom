@@ -3,6 +3,7 @@ import Hero from '@/components/sections/Hero';
 import Story from '@/components/sections/Story';
 import FeaturedProducts from '@/components/sections/FeaturedProducts';
 import Footer from '@/components/layout/Footer';
+import ScrollToTop from '@/components/ui/scroll-to-top';
 
 const Index = () => {
   return (
@@ -14,6 +15,7 @@ const Index = () => {
         <FeaturedProducts />
       </main>
       <Footer />
+      <ScrollToTop />
     </div>
   );
 };
