@@ -1,65 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ShoppingCart, Menu, X, Search } from 'lucide-react';
+import { Search, X, ChevronDown, Menu, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { shopLinks, pageLinks } from './nav-links';
+import { STICKY_NAV_CLASS, PAGE_X, NAV_LINK_BASE, navLinkClass } from '@/lib/page-layout';
+import { useCart } from '@/contexts/CartContext';
+import SiteLogo from '@/components/brand/SiteLogo';
 
 interface HeaderProps {
   variant?: 'solid' | 'transparent';
 }
 
 const Header = ({ variant = 'solid' }: HeaderProps) => {
+  const { cartCount } = useCart();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isMobileShopOpen, setIsMobileShopOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const shopRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const isActive = (path: string) => location.pathname === path;
+  useEffect(() => {
+    setIsShopOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsMobileShopOpen(false);
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (shopRef.current && !shopRef.current.contains(e.target as Node)) {
+        setIsShopOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const isHomePage = location.pathname === '/';
-  const isProductsPage = location.pathname === '/products';
-  const isTransparent = variant === 'transparent';
-
-  const navItems = [
-    { path: '/products', label: 'Products' },
-    { path: '/gallery', label: 'Gallery' }
-  ];
-
-  const headerClasses = `
-    fixed top-0 left-0 right-0 z-50 transition-all duration-300
-    ${isHomePage 
-      ? isScrolled 
-        ? 'bg-white/95 backdrop-blur-sm shadow-sm' 
-        : 'bg-transparent'
-      : 'bg-white/95 backdrop-blur-sm shadow-sm'
-    }
-  `;
-
-  // Professional scroll behavior for homepage
-  const navbarStyle = isHomePage ? {
-    backgroundColor: isScrolled ? 'rgba(255, 255, 255, 0.95) !important' : 'transparent !important',
-    backdropFilter: isScrolled ? 'blur(8px) !important' : 'none !important',
-    boxShadow: isScrolled ? '0 1px 3px 0 rgba(0, 0, 0, 0.1) !important' : 'none !important',
-    border: 'none !important',
-    transition: 'all 0.3s ease-in-out !important'
-  } : {};
-
-
-
-  const textColorClass = isHomePage && !isScrolled ? 'text-white' : 'text-foreground';
-  const navTextColorClass = isHomePage && !isScrolled ? 'text-white/90 hover:text-white' : 'text-muted-foreground hover:text-army-green';
-  const activeNavTextColorClass = isHomePage && !isScrolled ? 'text-white' : 'text-army-green';
+  const useLightText = isHomePage && !isScrolled && variant === 'transparent';
+  const textClass = useLightText ? 'text-white' : 'text-black';
+  const solidBar = isScrolled || !isHomePage || variant === 'solid';
+  const isShopActive = location.pathname === '/products';
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,163 +62,246 @@ const Header = ({ variant = 'solid' }: HeaderProps) => {
     }
   };
 
-  const toggleSearch = () => {
-    setIsSearchOpen(!isSearchOpen);
-    if (isSearchOpen) {
-      setSearchQuery('');
-    }
-  };
+  const mainNavClass = (active: boolean) =>
+    cn(NAV_LINK_BASE, navLinkClass(active, useLightText));
 
   return (
-    <header className={headerClasses} style={navbarStyle}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Left Side - Navigation */}
-          <div className="flex items-center">
-            <nav className="hidden md:flex items-center space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`text-sm font-medium transition-colors ${
-                    isActive(item.path) 
-                      ? activeNavTextColorClass
-                      : navTextColorClass
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
+    <header
+      className={cn(
+        STICKY_NAV_CLASS,
+        solidBar ? 'bg-white' : 'bg-transparent',
+        isScrolled && solidBar && 'shadow-sm border-b border-black/10'
+      )}
+    >
+      <div className={cn('relative max-w-[1400px] mx-auto', PAGE_X)}>
+      {/* Top right: Search + Cart */}
+      <div className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-7 md:right-12 lg:right-16 flex items-center gap-2 sm:gap-3 md:gap-4 z-10">
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          className={cn(
+            'text-[10px] font-bold tracking-[0.2em] uppercase hover:opacity-60 hidden sm:block',
+            textClass
+          )}
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          className={cn('sm:hidden p-1', textClass)}
+          aria-label="Search"
+        >
+          <Search className="w-4 h-4" strokeWidth={2} />
+        </button>
 
-          {/* Center - Logo */}
-          <div className="absolute left-1/2 transform -translate-x-1/2">
-            <Link to="/" className="flex items-center space-x-2">
-              <img 
-                src="/lovable-uploads/5b904431-50ea-45f9-a2e1-42008eaf5466.png" 
-                alt="HARV DREAMS" 
-                className="h-12 w-auto md:h-16"
-              />
-            </Link>
-          </div>
+        <Link
+          to="/account"
+          className={cn(
+            'min-w-[44px] min-h-[44px] flex items-center justify-center hover:opacity-60 sm:min-w-0 sm:min-h-0',
+            textClass
+          )}
+          aria-label="My account"
+        >
+          <User className="w-5 h-5 sm:hidden" strokeWidth={2} />
+          <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] uppercase">
+            Account
+          </span>
+        </Link>
 
-          {/* Right Side - Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center space-x-4">
-              {(isHomePage || isProductsPage) && (
-                <>
-                  {isSearchOpen ? (
-                    <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                      <Input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-48 h-9 text-sm"
-                        autoFocus
-                      />
-                      <Button type="submit" size="sm" variant="outline">
-                        <Search className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={toggleSearch}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </form>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={toggleSearch}>
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </Button>
-                  )}
-                </>
+        <Link
+          to="/cart"
+          className={cn(
+            'min-h-[44px] flex items-center text-[10px] font-bold tracking-[0.2em] uppercase gap-1 hover:opacity-60 px-0.5',
+            textClass
+          )}
+        >
+          Cart
+          <span
+            className={cn(
+              'text-[9px] min-w-[18px] h-[18px] inline-flex items-center justify-center border tabular-nums',
+              useLightText ? 'border-white text-white' : 'border-black text-black'
+            )}
+          >
+            {cartCount}
+          </span>
+        </Link>
+      </div>
+
+      {/* Mobile menu toggle */}
+      <button
+        type="button"
+        className={cn(
+          'absolute top-4 left-4 sm:top-5 sm:left-5 md:hidden z-10 min-w-[44px] min-h-[44px] flex items-center justify-center',
+          textClass
+        )}
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Menu"
+      >
+        {isMobileMenuOpen ? (
+          <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Close</span>
+        ) : (
+          <Menu className="w-5 h-5" strokeWidth={2} />
+        )}
+      </button>
+
+      {/* Centered logo + nav below */}
+      <div className="flex flex-col items-center text-center pt-14 pb-4 sm:pt-16 sm:pb-5 md:pt-9 md:pb-6">
+        <Link to="/" className="mb-0 md:mb-7">
+          <SiteLogo
+            variant={useLightText ? 'hero' : 'light'}
+            className="h-12 sm:h-14 md:h-[5.75rem] lg:h-28 mx-auto transition-all duration-300"
+          />
+        </Link>
+
+        <nav className="hidden md:flex items-center justify-center gap-10 lg:gap-12">
+          <div ref={shopRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsShopOpen((open) => !open)}
+              onMouseEnter={() => setIsShopOpen(true)}
+              className={cn(
+                'inline-flex items-center gap-1',
+                mainNavClass(isShopActive || isShopOpen)
               )}
-              {(isHomePage || isProductsPage) && (
-                <Link to="/products">
-                  <Button variant="outline" size="sm" className="relative">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Shop
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-army-green text-white text-xs">
-                      0
-                    </Badge>
-                  </Button>
-                </Link>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`md:hidden ${isHomePage && !isScrolled ? 'text-white hover:bg-white/10' : ''}`}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-expanded={isShopOpen}
             >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+              Shop
+              <ChevronDown
+                className={cn('w-3 h-3 transition-transform', isShopOpen && 'rotate-180')}
+                strokeWidth={2.5}
+              />
+            </button>
+
+            {isShopOpen && (
+              <div
+                className="absolute top-full left-1/2 -translate-x-1/2 pt-3 z-[60]"
+                onMouseLeave={() => setIsShopOpen(false)}
+              >
+                <div className="bg-white border border-black/10 min-w-[220px] py-8 px-6 flex flex-col items-center gap-5 shadow-sm">
+                  {shopLinks.map((item) => (
+                    <Link
+                      key={item.path + item.label}
+                      to={item.path}
+                      className="text-[10px] font-bold tracking-[0.2em] uppercase text-black hover:opacity-60 transition-opacity text-center whitespace-nowrap"
+                      onClick={() => setIsShopOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {pageLinks.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={mainNavClass(location.pathname === item.path)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      </div>
+
+      {isSearchOpen && (
+        <div className="absolute top-full left-0 right-0 bg-white border-t border-black/10 p-4 z-50">
+          <div className="max-w-2xl mx-auto flex items-center gap-4">
+            <form
+              onSubmit={handleSearch}
+              className="flex-1 flex items-center border-b border-black py-2"
+            >
+              <Input
+                type="text"
+                placeholder="SEARCH PRODUCTS..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-none focus-visible:ring-0 bg-transparent text-[10px] tracking-[0.2em] uppercase font-bold rounded-none"
+                autoFocus
+              />
+              <button type="submit" className="text-[10px] font-bold tracking-[0.2em] uppercase text-black">
+                Go
+              </button>
+            </form>
+            <button type="button" onClick={() => setIsSearchOpen(false)} aria-label="Close search">
+              <X className="w-4 h-4 text-black" />
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className={`md:hidden ${isHomePage && !isScrolled ? 'bg-black/20 backdrop-blur-sm' : 'bg-white/95 backdrop-blur-sm'}`}>
-            <nav className="py-4 space-y-2">
-              {navItems.map((item) => (
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-white z-[60] md:hidden flex flex-col items-center justify-center text-center p-8">
+          <button
+            type="button"
+            className="absolute top-5 right-4 text-[10px] font-bold tracking-[0.2em] uppercase"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Close
+          </button>
+
+          <Link to="/" className="mb-8" onClick={() => setIsMobileMenuOpen(false)}>
+            <SiteLogo variant="light" className="h-14 mx-auto" />
+          </Link>
+
+          <nav className="flex flex-col items-center gap-6 w-full max-w-xs">
+            <Link
+              to="/account"
+              className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 border border-black text-[11px] font-bold tracking-[0.2em] uppercase text-black bg-black/[0.02]"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <User className="w-4 h-4" strokeWidth={2} />
+              My account
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileShopOpen(!isMobileShopOpen)}
+              className="inline-flex items-center gap-1 text-[12px] font-bold tracking-[0.2em] uppercase text-black"
+            >
+              Shop
+              <ChevronDown
+                className={cn('w-3 h-3 transition-transform', isMobileShopOpen && 'rotate-180')}
+                strokeWidth={2.5}
+              />
+            </button>
+
+            {isMobileShopOpen &&
+              shopLinks.map((item) => (
                 <Link
-                  key={item.path}
+                  key={item.path + item.label}
                   to={item.path}
-                  className={`block px-4 py-2 text-sm font-medium transition-colors ${
-                    isActive(item.path) 
-                      ? isHomePage && !isScrolled ? 'text-white bg-white/10' : 'text-army-green bg-army-green/10'
-                      : isHomePage && !isScrolled ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-army-green'
-                  }`}
+                  className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/70"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
-              <div className="px-4 pt-4 space-y-2">
-                {(isHomePage || isProductsPage) && (
-                  <form onSubmit={handleSearch} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="flex-1 h-9 text-sm"
-                      />
-                      <Button type="submit" size="sm" variant="outline">
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </form>
-                )}
-                {(isHomePage || isProductsPage) && (
-                  <Link to="/products" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full relative"
-                    >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Shop
-                      <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-army-green text-white text-xs">
-                        0
-                      </Badge>
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            </nav>
-          </div>
-        )}
-      </div>
+
+            {pageLinks.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="text-[12px] font-bold tracking-[0.2em] uppercase text-black"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+
+            <Link
+              to="/cart"
+              className="text-[12px] font-bold tracking-[0.2em] uppercase text-black"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Cart ({cartCount})
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

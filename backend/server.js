@@ -4,7 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config({ path: './config.env' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -12,14 +13,30 @@ const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const customerRoutes = require('./routes/customers');
 const adminRoutes = require('./routes/admin');
+const shopOrderRoutes = require('./routes/shopOrders');
+const paymentRoutes = require('./routes/payments');
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8080',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
 }));
 
 // Rate limiting
@@ -45,6 +62,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/shop-orders', shopOrderRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

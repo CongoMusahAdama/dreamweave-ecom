@@ -1,141 +1,125 @@
+import { useEffect, useState } from 'react';
 import AdminLayout from '../components/layout/AdminLayout';
-import { Card } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package } from 'lucide-react';
+import AdminPageHeader from '../components/ui/AdminPageHeader';
+import AdminPanel from '../components/ui/AdminPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
+import { formatGhs } from '../lib/format';
+
+type AnalyticsData = {
+  growth: {
+    salesGrowth: number;
+    orderGrowth: number;
+    customerGrowth: number;
+  };
+  dailySales: { _id: string; revenue: number; orders: number }[];
+  categoryPerformance: { _id: string; revenue: number; orders: number }[];
+};
+
+const formatPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 
 const Analytics = () => {
-  const analyticsData = {
-    salesGrowth: '0%',
-    orderGrowth: '0%',
-    customerGrowth: '0%',
-    productViews: '0%',
-    topProducts: [],
-    recentActivity: [],
-  };
+  const { token } = useAuth();
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await apiFetch<{ success: boolean; data: AnalyticsData }>(
+          '/api/admin/analytics?period=30',
+          { token }
+        );
+        if (!cancelled) setData(res.data);
+      } catch {
+        if (!cancelled) setData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const growth = data?.growth;
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Track your business performance and insights</p>
-        </div>
+      <AdminPageHeader
+        title="Analytics"
+        description="Last 30 days — growth vs previous period and top line items."
+      />
 
-        {/* Growth Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Sales Growth</p>
-                <p className="text-2xl font-bold text-gray-600">{analyticsData.salesGrowth}</p>
-              </div>
-              <div className="p-3 bg-gray-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Order Growth</p>
-                <p className="text-2xl font-bold text-gray-600">{analyticsData.orderGrowth}</p>
-              </div>
-              <div className="p-3 bg-gray-100 rounded-full">
-                <ShoppingCart className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Customer Growth</p>
-                <p className="text-2xl font-bold text-gray-600">{analyticsData.customerGrowth}</p>
-              </div>
-              <div className="p-3 bg-gray-100 rounded-full">
-                <Users className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Product Views</p>
-                <p className="text-2xl font-bold text-gray-600">{analyticsData.productViews}</p>
-              </div>
-              <div className="p-3 bg-gray-100 rounded-full">
-                <Package className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Charts and Data */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Products */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Selling Products</h3>
-            {analyticsData.topProducts.length > 0 ? (
-              <div className="space-y-4">
-                {analyticsData.topProducts.map((product, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{product.name}</p>
-                      <p className="text-sm text-gray-500">{product.sales} units sold</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">{product.revenue}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No product data available</p>
-                <p className="text-sm text-gray-400 mt-2">Product analytics will appear here once you have sales</p>
-              </div>
-            )}
-          </Card>
-
-          {/* Recent Activity */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            {analyticsData.recentActivity.length > 0 ? (
-              <div className="space-y-3">
-                {analyticsData.recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start space-x-3">
-                    <div className={`w-2 h-2 rounded-full mt-2 ${
-                      activity.type === 'order' ? 'bg-blue-500' :
-                      activity.type === 'product' ? 'bg-green-500' : 'bg-purple-500'
-                    }`} />
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No recent activity</p>
-                <p className="text-sm text-gray-400 mt-2">Activity will appear here as your business grows</p>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Placeholder for Charts */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Overview</h3>
-          <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-gray-500">Chart visualization coming soon...</p>
-              <p className="text-sm text-gray-400 mt-2">Sales data will be displayed here</p>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-6 sm:mb-8">
+        {[
+          { label: 'Revenue', value: growth ? formatPct(growth.salesGrowth) : '—' },
+          { label: 'Orders', value: growth ? formatPct(growth.orderGrowth) : '—' },
+          { label: 'Customers', value: growth ? formatPct(growth.customerGrowth) : '—' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="border border-black/10 bg-black/[0.02] p-4 text-center sm:text-left"
+          >
+            <p className="text-[8px] font-bold tracking-[0.18em] uppercase text-black/40">
+              {item.label} growth
+            </p>
+            <p className="text-xl font-bold tabular-nums mt-1 text-black">
+              {loading ? '—' : item.value}
+            </p>
           </div>
-        </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <AdminPanel title="Daily sales">
+          {loading ? (
+            <p className="text-[10px] font-bold uppercase text-black/40 animate-pulse">Loading…</p>
+          ) : !data?.dailySales?.length ? (
+            <p className="text-[10px] font-bold uppercase text-black/40">No sales in this period</p>
+          ) : (
+            <ul className="space-y-2 max-h-64 overflow-y-auto">
+              {data.dailySales.map((row) => (
+                <li
+                  key={row._id}
+                  className="flex justify-between gap-2 text-[9px] font-bold uppercase"
+                >
+                  <span className="text-black/60">{row._id}</span>
+                  <span className="text-black tabular-nums">
+                    {formatGhs(row.revenue)} · {row.orders} orders
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
+
+        <AdminPanel title="Top line items">
+          {loading ? (
+            <p className="text-[10px] font-bold uppercase text-black/40 animate-pulse">Loading…</p>
+          ) : !data?.categoryPerformance?.length ? (
+            <p className="text-[10px] font-bold uppercase text-black/40">No item data yet</p>
+          ) : (
+            <ul className="space-y-2">
+              {data.categoryPerformance.map((row) => (
+                <li
+                  key={row._id}
+                  className="flex justify-between gap-2 text-[9px] font-bold uppercase"
+                >
+                  <span className="text-black truncate">{row._id}</span>
+                  <span className="text-black/50 shrink-0 tabular-nums">
+                    {formatGhs(row.revenue)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
       </div>
     </AdminLayout>
   );

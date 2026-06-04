@@ -1,63 +1,58 @@
-import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import ScrollReveal from '@/components/ui/ScrollReveal';
+
+const HERO_IMAGE = '/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png';
 
 const Hero = () => {
   return (
-        <section 
-      className="relative h-[70vh] md:h-[95vh] flex items-center justify-center overflow-hidden" 
-      style={{ 
-        marginTop: '-80px', 
-        paddingTop: '0px',
-        backgroundImage: 'url(/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center 25%',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'scroll',
-        zIndex: 0
-      }}
-    >
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" />
-      
-      <div className="container mx-auto px-4 relative z-10" style={{ paddingTop: '80px' }}>
-        <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          {/* Main Heading - Positioned to avoid faces */}
-          <div className="mb-6 md:mb-8 animate-fade-in">
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
-              DREAM
-            </h1>
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight animate-fade-in-out">
-              BOLDLY
-            </h1>
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
-              WEAR DREAMS
-            </h1>
-          </div>
-          
-          {/* Subheading - Positioned below main heading */}
-          <div className="mb-12 md:mb-16 animate-fade-in">
-            <p className="text-sm sm:text-base md:text-lg text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
-              Ghanaian streetwear that tells your story. Bold designs, premium quality, 
-              and the courage to chase dreams.
-            </p>
-          </div>
-          
-          {/* Stats or Features - Positioned at bottom to avoid faces */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-3xl mx-auto mt-auto">
-            <div className="text-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <div className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2">100%</div>
-              <div className="text-xs md:text-sm text-white/90 font-medium">AUTHENTIC DESIGNS</div>
-            </div>
-            <div className="text-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              <div className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2">GHANA</div>
-              <div className="text-xs md:text-sm text-white/90 font-medium">PROUDLY MADE</div>
-            </div>
-            <div className="text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
-              <div className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2">∞</div>
-              <div className="text-xs md:text-sm text-white/90 font-medium">DREAM POSSIBILITIES</div>
-            </div>
-          </div>
-        </div>
+    <section className="bg-white w-full pt-[6.5rem] sm:pt-[7.5rem] md:pt-[14.5rem] lg:pt-[16rem] overflow-x-hidden">
+      <div className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 md:px-10 pb-10 sm:pb-12 md:pb-16 lg:pb-20">
+        <figure className="relative w-full aspect-[4/5] sm:aspect-[3/4] md:aspect-[5/4] max-h-[min(78vh,820px)] overflow-hidden bg-[#f0f0f0]">
+          <img
+            src={HERO_IMAGE}
+            alt="HARV DREAMS campaign"
+            className="hero-image-live h-full w-full object-cover object-center"
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent pointer-events-none" />
+
+          <figcaption className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-10 lg:p-12 text-left">
+            <ScrollReveal variant="fade-up" delay={100}>
+              <p className="label-caps text-white/70 mb-3 sm:mb-4">Est. 2024 • Accra, Ghana</p>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={180}>
+              <h1 className="heading-display text-lg sm:text-2xl md:text-3xl text-white mb-1 sm:mb-2">
+                Dream Boldly,
+              </h1>
+              <h1 className="heading-display text-lg sm:text-2xl md:text-3xl text-white/85 mb-4 sm:mb-5">
+                Wear Dreams.
+              </h1>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={260}>
+              <p className="text-[11px] sm:text-[12px] font-bold text-white/85 max-w-md mb-6 sm:mb-8 leading-[1.7]">
+                Curated streetwear from Takoradi. Built for dreamers who refuse to settle.
+              </p>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={340}>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <Link to="/products" className="w-full sm:w-auto">
+                  <button type="button" className="btn-premium w-full sm:w-auto">
+                    Shop Collection
+                  </button>
+                </Link>
+                <Link
+                  to="/gallery"
+                  className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/85 hover:text-white py-3 text-center sm:text-left transition-colors"
+                >
+                  Explore Gallery →
+                </Link>
+              </div>
+            </ScrollReveal>
+          </figcaption>
+        </figure>
       </div>
     </section>
   );

@@ -15,10 +15,7 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please provide an email'],
     unique: true,
     lowercase: true,
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      'Please provide a valid email'
-    ]
+    trim: true,
   },
   password: {
     type: String,
@@ -55,6 +52,15 @@ const userSchema = new mongoose.Schema({
     isDefault: {
       type: Boolean,
       default: false
+    },
+    deliveryMethod: {
+      type: String,
+      enum: ['delivery', 'pickup'],
+      default: 'delivery'
+    },
+    pickupStation: {
+      type: String,
+      trim: true
     }
   }],
   resetPasswordToken: String,
@@ -63,7 +69,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  lastLogin: Date
+  lastLogin: Date,
+  /** Static shop catalog product IDs (harv/src/data/products.ts) */
+  wishlist: {
+    type: [Number],
+    default: []
+  }
 }, {
   timestamps: true
 });

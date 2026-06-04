@@ -4,6 +4,8 @@ import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import ErrorBoundary from '@/components/ui/error-boundary';
+import ScrollReveal from '@/components/ui/ScrollReveal';
+import { SITE_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -87,28 +89,27 @@ const Gallery = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-x-hidden">
         <Header variant="solid" />
         
-        <main className="pt-20">
-          {/* Hero Section */}
-          <section className="py-12 bg-muted/20">
-            <div className="container mx-auto px-4">
-              <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in">
+        <main className={`w-full ${SITE_HEADER_OFFSET_PT}`}>
+          <section className="py-8 sm:py-10 md:py-14 bg-white">
+            <div className="container mx-auto px-4 sm:px-6">
+              <ScrollReveal variant="fade-up" className="text-center">
+                <h1 className="heading-display text-xl sm:text-2xl md:text-3xl text-black mb-4">
                   Gallery
                 </h1>
-                <p className="text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                <p className="text-[12px] font-bold text-black/70 max-w-2xl mx-auto leading-[1.7]">
                   See how dreamers style HARV DREAMS. Real people, real style, real dreams.
                 </p>
-              </div>
+              </ScrollReveal>
             </div>
           </section>
 
           {/* Filter Tabs */}
-          <section className="py-8 border-b">
-            <div className="container mx-auto px-4">
-              <div className="flex flex-wrap justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <section className="py-6 sm:py-8">
+            <div className="container mx-auto px-4 sm:px-6">
+              <ScrollReveal variant="fade-up" delay={100} className="flex flex-wrap justify-center gap-3 sm:gap-4 overflow-x-auto scrollbar-none pb-2">
                 {categories.map((category) => (
                   <Button
                     key={category.key}
@@ -120,22 +121,24 @@ const Gallery = () => {
                     {category.label}
                   </Button>
                 ))}
-              </div>
+              </ScrollReveal>
             </div>
           </section>
 
           {/* Lifestyle Images Grid */}
-          <section className="py-12">
-            <div className="container mx-auto px-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <section className="py-8 sm:py-12">
+            <div className="container mx-auto px-4 sm:px-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                 {filteredImages.map((item, index) => (
-                  <div key={item.id} className="group animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                    <div className="bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-2">
+                  <ScrollReveal key={item.id} variant="product" delay={index * 80}>
+                  <div className="group">
+                    <div className="bg-card overflow-hidden border border-black/10 transition-all duration-500 hover:-translate-y-1 active:scale-[0.99]">
                       <div className="aspect-[4/5] overflow-hidden relative">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                          loading="lazy"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/placeholder.svg';
@@ -168,6 +171,7 @@ const Gallery = () => {
                       </div>
                     </div>
                   </div>
+                  </ScrollReveal>
                 ))}
               </div>
             </div>

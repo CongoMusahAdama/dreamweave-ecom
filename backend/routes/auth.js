@@ -5,6 +5,18 @@ const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
+const formatUser = (user) => ({
+  id: user._id.toString(),
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  addresses: user.addresses,
+  wishlist: user.wishlist || [],
+  avatar: user.avatar,
+  lastLogin: user.lastLogin,
+});
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
@@ -21,8 +33,9 @@ router.post('/register', [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
   body('phone')
-    .optional()
-    .isMobilePhone()
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: 7, max: 20 })
     .withMessage('Please provide a valid phone number')
 ], async (req, res) => {
   try {
@@ -31,6 +44,7 @@ router.post('/register', [
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
+        message: errors.array()[0].msg,
         errors: errors.array()
       });
     }
@@ -61,20 +75,28 @@ router.post('/register', [
       success: true,
       message: 'User registered successfully',
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        },
+        user: formatUser(user),
         token
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email',
+      });
+    }
+    if (error.name === 'ValidationError') {
+      const first = Object.values(error.errors)[0];
+      return res.status(400).json({
+        success: false,
+        message: first?.message || 'Validation failed',
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Error registering user'
+      message: 'Error registering user',
     });
   }
 });
@@ -97,13 +119,14 @@ router.post('/login', [
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array()
+        message: errors.array()[0].msg,
+        errors: errors.array(),
       });
     }
 
-    const { email, password } = req.body;
+    const email = String(req.body.email).trim().toLowerCase();
+    const { password } = req.body;
 
-    // Check if user exists
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
@@ -140,12 +163,7 @@ router.post('/login', [
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        },
+        user: formatUser(user),
         token
       }
     });
@@ -168,17 +186,8 @@ router.get('/me', protect, async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          addresses: user.addresses,
-          avatar: user.avatar,
-          lastLogin: user.lastLogin
-        }
-      }
+        user: formatUser(user),
+      },
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -198,10 +207,8 @@ router.put('/profile', protect, [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
-  body('phone')
-    .optional()
-    .isMobilePhone()
-    .withMessage('Please provide a valid phone number')
+  body('phone').optional().trim(),
+  body('addresses').optional().isArray(),
 ], async (req, res) => {
   try {
     // Check for validation errors
@@ -234,15 +241,7 @@ router.put('/profile', protect, [
       success: true,
       message: 'Profile updated successfully',
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          addresses: user.addresses,
-          avatar: user.avatar
-        }
+        user: formatUser(user)
       }
     });
   } catch (error) {
@@ -308,6 +307,43 @@ router.put('/change-password', protect, [
       success: false,
       message: 'Error changing password'
     });
+  }
+});
+
+// @desc    Toggle product in wishlist
+// @route   POST /api/auth/wishlist/:productId
+// @access  Private
+router.post('/wishlist/:productId', protect, async (req, res) => {
+  try {
+    const productId = parseInt(req.params.productId, 10);
+    if (Number.isNaN(productId)) {
+      return res.status(400).json({ success: false, message: 'Invalid product id' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const list = user.wishlist || [];
+    const index = list.indexOf(productId);
+    let added = false;
+    if (index >= 0) {
+      list.splice(index, 1);
+    } else {
+      list.push(productId);
+      added = true;
+    }
+    user.wishlist = list;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      data: { wishlist: user.wishlist, added },
+    });
+  } catch (error) {
+    console.error('Wishlist toggle error:', error);
+    res.status(500).json({ success: false, message: 'Error updating wishlist' });
   }
 });
 

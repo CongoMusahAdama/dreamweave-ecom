@@ -1,23 +1,15 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'customer' | 'admin';
-  phone?: string;
-  addresses?: any[];
-  avatar?: string;
-  lastLogin?: string;
-}
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { apiFetch } from '@/lib/api';
+import type { AuthUser } from '@/types/customer';
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string, fallbackUser?: AuthUser) => Promise<AuthUser>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  updateUser: (userData: Partial<AuthUser>) => void;
+  refreshUser: () => Promise<AuthUser | null>;
   isAuthenticated: boolean;
   isAdmin: boolean;
 }
@@ -37,36 +29,43 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing token on app load
+  const syncUserFromApi = useCallback(async (authToken: string) => {
+    const data = await apiFetch<{ success: boolean; data: { user: AuthUser } }>(
+      '/api/auth/me',
+      { token: authToken }
+    );
+    const synced = {
+      ...data.data.user,
+      id: String(data.data.user.id),
+      wishlist: data.data.user.wishlist ?? [],
+    };
+    setUser(synced);
+    localStorage.setItem('harv_dreams_user', JSON.stringify(synced));
+    return synced;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const storedToken = token || localStorage.getItem('harv_dreams_token');
+    if (!storedToken) return null;
+    return syncUserFromApi(storedToken);
+  }, [token, syncUserFromApi]);
+
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('harv_dreams_token');
-      const storedUser = localStorage.getItem('harv_dreams_user');
 
-      if (storedToken && storedUser) {
+      if (storedToken) {
         try {
-          // Verify token with backend
-          const response = await fetch('http://localhost:5000/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setToken(storedToken);
-            setUser(data.data.user);
-          } else {
-            // Token is invalid, clear storage
-            localStorage.removeItem('harv_dreams_token');
-            localStorage.removeItem('harv_dreams_user');
-          }
+          setToken(storedToken);
+          await syncUserFromApi(storedToken);
         } catch (error) {
           console.error('Token verification failed:', error);
+          setToken(null);
+          setUser(null);
           localStorage.removeItem('harv_dreams_token');
           localStorage.removeItem('harv_dreams_user');
         }
@@ -75,14 +74,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
 
     initializeAuth();
-  }, []);
+  }, [syncUserFromApi]);
 
-  const login = (newToken: string, userData: User) => {
-    setToken(newToken);
-    setUser(userData);
-    localStorage.setItem('harv_dreams_token', newToken);
-    localStorage.setItem('harv_dreams_user', JSON.stringify(userData));
-  };
+  const login = useCallback(
+    async (newToken: string, fallbackUser?: AuthUser) => {
+      setToken(newToken);
+      localStorage.setItem('harv_dreams_token', newToken);
+      try {
+        return await syncUserFromApi(newToken);
+      } catch (error) {
+        console.error('Failed to sync user after login:', error);
+        if (fallbackUser) {
+          const merged = {
+            ...fallbackUser,
+            id: String(fallbackUser.id),
+            wishlist: fallbackUser.wishlist ?? [],
+          };
+          setUser(merged);
+          localStorage.setItem('harv_dreams_user', JSON.stringify(merged));
+          return merged;
+        }
+        throw error;
+      }
+    },
+    [syncUserFromApi]
+  );
 
   const logout = () => {
     setToken(null);
@@ -91,7 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem('harv_dreams_user');
   };
 
-  const updateUser = (userData: Partial<User>) => {
+  const updateUser = (userData: Partial<AuthUser>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
@@ -106,13 +122,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     login,
     logout,
     updateUser,
+    refreshUser,
     isAuthenticated: !!token && !!user,
     isAdmin: user?.role === 'admin',
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

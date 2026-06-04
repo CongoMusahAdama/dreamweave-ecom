@@ -1,147 +1,85 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { Link, useLocation } from 'react-router-dom';
+import { NEW_ARRIVALS_HASH, NEW_ARRIVALS_SECTION_ID } from '@/lib/scroll-to';
+import { HEADER_OFFSET_SCROLL_MT } from '@/lib/page-layout';
+import { shopProducts } from '@/data/products';
+import ProductCard from '@/components/shop/ProductCard';
+import ScrollReveal from '@/components/ui/ScrollReveal';
+
+const DISPLAY_LIMIT = 16;
 
 const FeaturedProducts = () => {
+  const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('new-arrivals');
 
-  // Category navigation inspired by Mowalola
+  useEffect(() => {
+    if (location.hash === NEW_ARRIVALS_HASH) {
+      setSelectedCategory('new-arrivals');
+    }
+  }, [location.hash]);
+
   const categories = [
     { key: 'new-arrivals', label: 'NEW ARRIVALS' },
     { key: 'all', label: 'ALL' },
-    { key: 'tops', label: 'TOPS' },
-    { key: 'accessories', label: 'ACCESSORIES' }
+    { key: 'tees', label: 'TEES' },
+    { key: 'hoodies', label: 'HOODIES' },
+    { key: 'bottoms', label: 'BOTTOMS' },
   ];
 
-  // Placeholder products - these will come from Supabase once connected
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Dream Hoodie",
-      price: "₵150",
-      image: "/lovable-uploads/4612cdc2-c834-4bca-96a1-d73391c23439.png",
-      hoverImage: "/lovable-uploads/44a15bbd-361a-4df5-8eef-e8d168d56d3e.png",
-      category: "tops"
-    },
-    {
-      id: 2,
-      name: "Vision Tee",
-      price: "₵85",
-      image: "/lovable-uploads/f5d50ca7-4513-4a16-8d89-1529c33c6ada.png",
-      hoverImage: "/lovable-uploads/588488c4-1f02-4461-8bea-64b6c0de61a1.png",
-      category: "tops"
-    },
-    {
-      id: 3,
-      name: "Hustle Joggers",
-      price: "₵120",
-      image: "/lovable-uploads/228d5180-0a9a-4507-9a32-0bb021c9b4d1.png",
-      hoverImage: "/lovable-uploads/4612cdc2-c834-4bca-96a1-d73391c23439.png",
-      category: "bottoms"
-    },
-    {
-      id: 4,
-      name: "Ambition Cap",
-      price: "₵65",
-      image: "/lovable-uploads/588488c4-1f02-4461-8bea-64b6c0de61a1.png",
-      hoverImage: "/lovable-uploads/f5d50ca7-4513-4a16-8d89-1529c33c6ada.png",
-      category: "accessories"
+  const filteredProducts = useMemo(() => {
+    const sorted = [...shopProducts].sort((a, b) => b.id - a.id);
+    if (selectedCategory === 'all' || selectedCategory === 'new-arrivals') {
+      return sorted.slice(0, DISPLAY_LIMIT);
     }
-  ];
-
-  const filteredProducts = selectedCategory === 'all' 
-    ? featuredProducts 
-    : selectedCategory === 'new-arrivals'
-    ? featuredProducts.slice(0, 4) // Show first 4 as new arrivals
-    : featuredProducts.filter(product => product.category === selectedCategory);
+    return sorted.filter((p) => p.category === selectedCategory).slice(0, DISPLAY_LIMIT);
+  }, [selectedCategory]);
 
   return (
-    <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
-        {/* Category Navigation - Inspired by Mowalola */}
-        <div className="flex flex-wrap justify-center gap-8 mb-12 border-b border-gray-200 pb-4">
-          {categories.map((category) => (
-            <button
-              key={category.key}
-              onClick={() => setSelectedCategory(category.key)}
-              className={`text-sm font-medium tracking-wider uppercase transition-colors duration-300 hover:text-army-green ${
-                selectedCategory === category.key
-                  ? 'text-army-green border-b-2 border-army-green'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Section Header */}
-        <div className="text-center mb-16 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in">
-            FEATURED <span className="text-army-green">DREAMS</span>
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            Handpicked pieces that embody the spirit of chasing dreams and 
-            living authentically.
+    <section
+      id={NEW_ARRIVALS_SECTION_ID}
+      className={cn(
+        'py-12 sm:py-16 md:py-24 bg-white border-t border-black/10 overflow-x-hidden',
+        HEADER_OFFSET_SCROLL_MT
+      )}
+    >
+      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8">
+        <ScrollReveal variant="fade-up" className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-8 sm:mb-12 border-b border-black/10 pb-5 sm:pb-6">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/40">
+            Latest drops
           </p>
-        </div>
+          <div className="flex flex-wrap gap-4 sm:gap-6 md:gap-10 -mx-1 px-1 overflow-x-auto scrollbar-none">
+            {categories.map((category) => (
+              <button
+                key={category.key}
+                type="button"
+                onClick={() => setSelectedCategory(category.key)}
+                className={cn(
+                  'text-[10px] font-bold tracking-[0.2em] uppercase transition-all duration-300 py-2 shrink-0',
+                  selectedCategory === category.key
+                    ? 'text-black border-b border-black'
+                    : 'text-black/40 hover:text-black'
+                )}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </ScrollReveal>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3 sm:gap-x-4 md:gap-x-8 gap-y-8 sm:gap-y-10 md:gap-y-14">
           {filteredProducts.map((product, index) => (
-            <Card 
-              key={product.id} 
-              className="group cursor-pointer border-0 shadow-soft hover:shadow-medium transition-all duration-300 hover:-translate-y-2 animate-fade-in bg-card"
-              style={{ animationDelay: `${0.4 + index * 0.1}s` }}
-            >
-              <CardContent className="p-0">
-                {/* Product Image */}
-                <div className="relative overflow-hidden rounded-t-lg aspect-[4/5] bg-muted">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  {/* Quick View Overlay */}
-                  <div className="absolute inset-0 bg-primary/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <Button 
-                      variant="secondary" 
-                      size="sm"
-                      className="bg-white text-primary hover:bg-white/90"
-                    >
-                      Quick View
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Product Info */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-foreground mb-2 group-hover:text-army-green transition-colors">
-                    {product.name}
-                  </h3>
-                  <p className="text-lg font-bold text-army-green">
-                    {product.price}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <ProductCard key={product.id} product={product} index={index} />
           ))}
         </div>
 
-        {/* View All Button */}
-        <div className="text-center animate-fade-in" style={{ animationDelay: '0.8s' }}>
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="border-army-green text-army-green hover:bg-army-green hover:text-white px-8 py-6 text-lg font-semibold transition-all duration-300 hover:scale-105 group"
-            onClick={() => window.location.href = '/products'}
-          >
-            View All Products
-            <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </div>
+        <ScrollReveal variant="fade-up" delay={200} className="mt-10 sm:mt-14 text-center">
+          <Link to="/products">
+            <button type="button" className="btn-premium w-full sm:w-auto">
+              View All
+            </button>
+          </Link>
+        </ScrollReveal>
       </div>
     </section>
   );

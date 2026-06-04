@@ -1,12 +1,22 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import RouteScrollToTop from './components/ui/RouteScrollToTop';
+import CartNavBridge from './components/shop/CartNavBridge';
+import { Toaster } from './components/ui/sonner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import { useState } from 'react';
 import AuthModal from './components/auth/AuthModal';
 
 // Import pages
 import Home from './pages/Index';
 import Products from './pages/Products';
+import ProductDetail from './pages/ProductDetail';
+import Cart from './pages/Cart';
 import Gallery from './pages/Gallery';
+import About from './pages/About';
+import Shipping from './pages/Shipping';
+import Privacy from './pages/Privacy';
+import Account from './pages/Account';
 import AdminDashboard from './admin/pages/Dashboard';
 import AdminProducts from './admin/pages/Products';
 import AdminOrders from './admin/pages/Orders';
@@ -14,9 +24,6 @@ import AdminCustomers from './admin/pages/Customers';
 import AdminAnalytics from './admin/pages/Analytics';
 import AdminSettings from './admin/pages/Settings';
 
-// Import components
-import Header from './components/navigation/Header';
-import Footer from './components/layout/Footer';
 import ErrorBoundary from './components/ui/error-boundary';
 
 // Protected Route Component
@@ -25,7 +32,7 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
   requireAuth?: boolean; 
   requireAdmin?: boolean; 
 }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading, login } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   if (loading) {
@@ -39,24 +46,31 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
   if (requireAuth && !isAuthenticated) {
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
-            <p className="text-gray-600 mb-6">Please sign in to access this page</p>
+        <div className="min-h-screen flex items-center justify-center bg-white px-4">
+          <div className="text-center max-w-sm">
+            <h2 className="text-[12px] font-bold tracking-[0.2em] uppercase text-black mb-4">
+              Sign in required
+            </h2>
+            <p className="text-[10px] font-bold text-black/50 mb-6 uppercase tracking-wider">
+              Please sign in to access your account
+            </p>
             <button
+              type="button"
               onClick={() => setShowAuthModal(true)}
-              className="bg-army-green hover:bg-army-green/90 text-white px-6 py-3 rounded-lg font-medium"
+              className="bg-black text-white px-8 py-3 text-[10px] font-bold tracking-[0.2em] uppercase"
             >
-              Sign In
+              Sign in
             </button>
           </div>
         </div>
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
-          onSuccess={(token, user) => {
-            // This will be handled by the AuthContext
+          onSuccess={async (token, user) => {
+            await login(token, user);
+            setShowAuthModal(false);
           }}
+          initialMode="login"
         />
       </>
     );
@@ -82,31 +96,41 @@ const AppContent = () => {
   const { isAuthenticated, login } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const handleAuthSuccess = (token: string, user: any) => {
-    login(token, user);
+  const handleAuthSuccess = async (token: string, user: any) => {
+    await login(token, user);
   };
 
   return (
     <Router>
+      <RouteScrollToTop />
+      <CartProvider>
+      <CartNavBridge />
+      <Toaster />
       <div className="min-h-screen flex flex-col">
-        <Header />
-        
         <main className="flex-grow">
           <ErrorBoundary>
         <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/shipping" element={<Shipping />} />
+          <Route path="/returns" element={<Navigate to="/shipping#returns" replace />} />
+          <Route path="/privacy" element={<Privacy />} />
               
-              {/* Protected Routes */}
-              <Route 
-                path="/products" 
+              <Route path="/products" element={<Products />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route
+                path="/account"
                 element={
                   <ProtectedRoute requireAuth={true}>
-                    <Products />
+                    <Account />
                   </ProtectedRoute>
-                } 
+                }
               />
+
+              {/* Protected Routes */}
               
               {/* Admin Routes */}
               <Route 
@@ -163,9 +187,7 @@ const AppContent = () => {
         </Routes>
           </ErrorBoundary>
         </main>
-        
-        <Footer />
-        
+
         {/* Auth Modal */}
         <AuthModal
           isOpen={showAuthModal}
@@ -173,6 +195,7 @@ const AppContent = () => {
           onSuccess={handleAuthSuccess}
         />
       </div>
+      </CartProvider>
     </Router>
   );
 };

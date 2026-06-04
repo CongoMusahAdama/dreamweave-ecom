@@ -1,13 +1,14 @@
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
+import { SITE_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header variant="solid" />
       
-      <main className="pt-20">
+      <main className={`w-full ${SITE_HEADER_OFFSET_PT}`}>
         {/* Hero Section */}
         <section className="py-16 md:py-24">
           <div className="container mx-auto px-4">

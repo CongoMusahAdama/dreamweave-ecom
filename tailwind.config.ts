@@ -104,7 +104,16 @@ export default {
 				'scale-in': 'scale-in 0.3s ease-out'
 			},
 			fontFamily: {
-				'brand': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+				brand: ['"Courier New"', 'Courier', 'monospace'],
+				mono: ['"Courier New"', 'Courier', 'monospace'],
+				serif: ['"Courier New"', 'Courier', 'monospace'],
+			},
+			fontSize: {
+				xs: ['10px', { lineHeight: '1.7' }],
+				sm: ['12px', { lineHeight: '1.7' }],
+				base: ['12px', { lineHeight: '1.7' }],
+				lg: ['14px', { lineHeight: '1.7' }],
+				xl: ['16px', { lineHeight: '1.7' }],
 			}
 		}
 	},

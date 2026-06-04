@@ -1,3 +1,5 @@
+import type { ShopOrder } from '@/types/customer';
+
 export interface AdminStats {
   totalSales: number;
   totalOrders: number;
@@ -7,60 +9,40 @@ export interface AdminStats {
   lowStockProducts: number;
 }
 
-export interface AdminProduct {
-  id: number;
-  name: string;
-  price: string;
-  frontImage: string;
-  backImage: string;
-  category: string;
-  stock: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdminOrder {
-  id: number;
-  customerName: string;
-  customerEmail: string;
-  totalAmount: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  items: AdminOrderItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdminOrderItem {
-  id: number;
-  productName: string;
-  quantity: number;
-  price: string;
-  size: string;
-}
-
-export interface AdminCustomer {
-  id: number;
+export type PopulatedCustomer = {
+  _id: string;
   name: string;
   email: string;
   phone?: string;
-  totalOrders: number;
-  totalSpent: string;
-  lastOrderDate?: string;
+};
+
+export interface AdminShopOrder extends ShopOrder {
+  customer?: PopulatedCustomer | string;
+}
+
+export interface MongoProduct {
+  _id: string;
+  name: string;
+  description?: string;
+  price: number;
+  category: string;
+  stock: number;
+  isActive?: boolean;
+  images?: { front?: string; back?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminCustomer {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
   createdAt: string;
 }
 
-export interface SalesData {
-  date: string;
-  sales: number;
-  orders: number;
-}
-
-export interface ProductAnalytics {
-  productId: number;
-  productName: string;
-  totalSold: number;
-  revenue: number;
-  views: number;
+export interface DashboardPayload {
+  stats: AdminStats;
+  recentOrders: AdminShopOrder[];
+  lowStockProducts: { _id: string; name: string; stock: number; category: string }[];
 }

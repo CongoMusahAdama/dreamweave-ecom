@@ -1,12 +1,91 @@
 const express = require('express');
 const User = require('../models/User');
 const Product = require('../models/Product');
-const Order = require('../models/Order');
+const ShopOrder = require('../models/ShopOrder');
 const { protect, authorize } = require('../middleware/auth');
+
+const COMPLETED_STATUSES = ['delivered', 'shipped'];
+const PAID_MATCH = { $or: [{ paymentStatus: 'paid' }, { status: { $in: COMPLETED_STATUSES } }] };
 
 const router = express.Router();
 
-// All routes require admin access
+// @desc    Create or reset admin from .env (dev) or first-time setup (prod)
+// @route   POST /api/admin/setup
+// @access  Public (must stay above admin auth middleware)
+router.post('/setup', async (req, res) => {
+  try {
+    const email = (req.body.email || process.env.ADMIN_EMAIL || 'admin@harvdreams.com')
+      .trim()
+      .toLowerCase();
+    const password = req.body.password || process.env.ADMIN_PASSWORD || 'admin123';
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    let user = await User.findOne({ email }).select('+password');
+
+    if (user) {
+      if (!isDev) {
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists. Reset is only allowed in development.',
+        });
+      }
+      user.password = password;
+      user.role = 'admin';
+      user.isActive = true;
+      if (!user.name) user.name = 'HARV Admin';
+      await user.save();
+      return res.status(200).json({
+        success: true,
+        message: 'Admin credentials updated',
+        data: {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          },
+        },
+      });
+    }
+
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin && !isDev) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin user already exists',
+      });
+    }
+
+    const admin = await User.create({
+      name: 'HARV Admin',
+      email,
+      password,
+      role: 'admin',
+      isActive: true,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Default admin user created successfully',
+      data: {
+        user: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Setup admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating admin user',
+    });
+  }
+});
+
+// All other admin routes require authentication
 router.use(protect, authorize('admin'));
 
 // @desc    Get dashboard statistics
@@ -14,73 +93,52 @@ router.use(protect, authorize('admin'));
 // @access  Private (Admin only)
 router.get('/dashboard', async (req, res) => {
   try {
-    // Get basic counts
     const totalProducts = await Product.countDocuments();
-    const totalOrders = await Order.countDocuments();
+    const totalOrders = await ShopOrder.countDocuments();
     const totalCustomers = await User.countDocuments({ role: 'customer' });
 
-    // Calculate total sales
-    const totalSales = await Order.aggregate([
-      { $match: { status: { $in: ['delivered', 'shipped'] } } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    const totalSales = await ShopOrder.aggregate([
+      { $match: PAID_MATCH },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
 
-    // Get recent orders
-    const recentOrders = await Order.find()
-      .populate('customer', 'name email')
+    const recentOrders = await ShopOrder.find()
+      .populate('customer', 'name email phone')
       .sort({ createdAt: -1 })
       .limit(5);
 
-    // Get low stock products
     const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
-      .select('name stock category')
+      .select('name stock category images')
       .limit(10);
 
-    // Get monthly revenue for the last 6 months
-    const monthlyRevenue = await Order.aggregate([
-      { $match: { status: { $in: ['delivered', 'shipped'] } } },
+    const monthlyRevenue = await ShopOrder.aggregate([
+      { $match: PAID_MATCH },
       {
         $group: {
           _id: {
             year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' }
+            month: { $month: '$createdAt' },
           },
-          revenue: { $sum: '$totalPrice' },
-          orders: { $sum: 1 }
-        }
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 },
+        },
       },
       { $sort: { '_id.year': -1, '_id.month': -1 } },
-      { $limit: 6 }
+      { $limit: 6 },
     ]);
 
-    // Get top selling products
-    const topProducts = await Order.aggregate([
+    const topProducts = await ShopOrder.aggregate([
       { $unwind: '$items' },
       {
         $group: {
-          _id: '$items.product',
+          _id: '$items.productId',
+          name: { $first: '$items.name' },
           totalSold: { $sum: '$items.quantity' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
-        }
+          revenue: { $sum: { $multiply: ['$items.priceAmount', '$items.quantity'] } },
+        },
       },
       { $sort: { totalSold: -1 } },
       { $limit: 5 },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'product'
-        }
-      },
-      { $unwind: '$product' },
-      {
-        $project: {
-          name: '$product.name',
-          totalSold: 1,
-          revenue: 1
-        }
-      }
     ]);
 
     res.status(200).json({
@@ -121,16 +179,21 @@ router.get('/analytics', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
 
     // Sales growth
-    const currentPeriodSales = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, status: { $in: ['delivered', 'shipped'] } } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    const currentPeriodSales = await ShopOrder.aggregate([
+      { $match: { createdAt: { $gte: startDate }, ...PAID_MATCH } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
 
     const previousStartDate = new Date(startDate);
     previousStartDate.setDate(previousStartDate.getDate() - days);
-    const previousPeriodSales = await Order.aggregate([
-      { $match: { createdAt: { $gte: previousStartDate, $lt: startDate }, status: { $in: ['delivered', 'shipped'] } } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    const previousPeriodSales = await ShopOrder.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: previousStartDate, $lt: startDate },
+          ...PAID_MATCH,
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
 
     const currentSales = currentPeriodSales[0]?.total || 0;
@@ -138,9 +201,9 @@ router.get('/analytics', async (req, res) => {
     const salesGrowth = previousSales > 0 ? ((currentSales - previousSales) / previousSales) * 100 : 0;
 
     // Order growth
-    const currentPeriodOrders = await Order.countDocuments({ createdAt: { $gte: startDate } });
-    const previousPeriodOrders = await Order.countDocuments({ 
-      createdAt: { $gte: previousStartDate, $lt: startDate } 
+    const currentPeriodOrders = await ShopOrder.countDocuments({ createdAt: { $gte: startDate } });
+    const previousPeriodOrders = await ShopOrder.countDocuments({
+      createdAt: { $gte: previousStartDate, $lt: startDate },
     });
     const orderGrowth = previousPeriodOrders > 0 ? ((currentPeriodOrders - previousPeriodOrders) / previousPeriodOrders) * 100 : 0;
 
@@ -160,38 +223,29 @@ router.get('/analytics', async (req, res) => {
     const productViewsGrowth = 0;
 
     // Daily sales for chart
-    const dailySales = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, status: { $in: ['delivered', 'shipped'] } } },
+    const dailySales = await ShopOrder.aggregate([
+      { $match: { createdAt: { $gte: startDate }, ...PAID_MATCH } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          revenue: { $sum: '$totalPrice' },
-          orders: { $sum: 1 }
-        }
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 },
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
-    // Category performance
-    const categoryPerformance = await Order.aggregate([
+    const categoryPerformance = await ShopOrder.aggregate([
       { $unwind: '$items' },
       {
-        $lookup: {
-          from: 'products',
-          localField: 'items.product',
-          foreignField: '_id',
-          as: 'product'
-        }
-      },
-      { $unwind: '$product' },
-      {
         $group: {
-          _id: '$product.category',
-          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
-          orders: { $sum: 1 }
-        }
+          _id: '$items.name',
+          revenue: { $sum: { $multiply: ['$items.priceAmount', '$items.quantity'] } },
+          orders: { $sum: 1 },
+        },
       },
-      { $sort: { revenue: -1 } }
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
     ]);
 
     res.status(200).json({
@@ -216,47 +270,47 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
-// @desc    Create default admin user
-// @route   POST /api/admin/setup
-// @access  Public (for initial setup)
-router.post('/setup', async (req, res) => {
+// @desc    List all products (admin catalog)
+// @route   GET /api/admin/products
+// @access  Private (Admin only)
+router.get('/products', async (req, res) => {
   try {
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ role: 'admin' });
-    if (existingAdmin) {
-      return res.status(400).json({
-        success: false,
-        message: 'Admin user already exists'
-      });
+    const { page = 1, limit = 50, search, category } = req.query;
+    let query = {};
+    if (category && category !== 'all') {
+      query.category = String(category).toLowerCase();
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
     }
 
-    // Create default admin
-    const admin = await User.create({
-      name: 'Admin',
-      email: process.env.ADMIN_EMAIL || 'admin@harvdreams.com',
-      password: process.env.ADMIN_PASSWORD || 'admin123',
-      role: 'admin',
-      isActive: true
-    });
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
-    res.status(201).json({
+    const [products, total] = await Promise.all([
+      Product.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+      Product.countDocuments(query),
+    ]);
+
+    res.status(200).json({
       success: true,
-      message: 'Default admin user created successfully',
       data: {
-        user: {
-          id: admin._id,
-          name: admin.name,
-          email: admin.email,
-          role: admin.role
-        }
-      }
+        products,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
     });
   } catch (error) {
-    console.error('Setup admin error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating admin user'
-    });
+    console.error('Admin products error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching products' });
   }
 });
 

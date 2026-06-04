@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ScrollToTop = () => {
@@ -9,22 +9,16 @@ const ScrollToTop = () => {
 
   useEffect(() => {
     const toggleVisibility = () => {
-      if (window.pageYOffset > 300) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
+      setIsVisible(window.pageYOffset > 300);
     };
 
-    window.addEventListener('scroll', toggleVisibility);
+    window.addEventListener('scroll', toggleVisibility, { passive: true });
+    toggleVisibility();
     return () => window.removeEventListener('scroll', toggleVisibility);
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (!isMobile || !isVisible) {
@@ -32,13 +26,21 @@ const ScrollToTop = () => {
   }
 
   return (
-    <Button
+    <button
+      type="button"
       onClick={scrollToTop}
-      size="icon"
-      className="fixed bottom-6 right-6 z-50 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg animate-fade-in"
+      aria-label="Scroll to top"
+      className={cn(
+        'fixed z-[85] flex items-center justify-center',
+        'h-8 w-8 min-h-0 min-w-0 p-0',
+        'bottom-36 right-3.5',
+        'bg-black text-white border border-black/20',
+        'shadow-md active:scale-95 transition-transform',
+        'animate-fade-in'
+      )}
     >
-      <ArrowUp className="h-5 w-5" />
-    </Button>
+      <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+    </button>
   );
 };
 

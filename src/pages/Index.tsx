@@ -1,25 +1,21 @@
 import Header from '@/components/navigation/Header';
 import Hero from '@/components/sections/Hero';
-import ImageSlider from '@/components/sections/ImageSlider';
-import Story from '@/components/sections/Story';
 import FeaturedProducts from '@/components/sections/FeaturedProducts';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
+import WhatsAppButton from '@/components/ui/WhatsAppButton';
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header variant="transparent" />
-      <main className="pt-0">
+    <div className="min-h-screen bg-white overflow-x-hidden selection:bg-black selection:text-white">
+      <Header variant="solid" />
+      <main>
         <Hero />
-        <div className="relative z-10 bg-background">
-          <Story />
-          <FeaturedProducts />
-          <ImageSlider />
-        </div>
+        <FeaturedProducts />
       </main>
       <Footer />
       <ScrollToTop />
+      <WhatsAppButton />
     </div>
   );
 };
