@@ -1,5 +1,12 @@
+const envApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+/** Same-origin on Render (combined deploy); override with VITE_API_URL for split deploy */
 export const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
+  envApiUrl && envApiUrl.length > 0
+    ? envApiUrl
+    : typeof window !== 'undefined'
+      ? ''
+      : 'http://localhost:5000';
 
 export async function apiFetch<T>(
   path: string,

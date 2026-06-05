@@ -22,6 +22,7 @@ const app = express();
 app.use(helmet());
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.RENDER_EXTERNAL_URL,
   'http://localhost:5173',
   'http://localhost:8080',
   'http://127.0.0.1:5173',
@@ -31,6 +32,10 @@ const allowedOrigins = [
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    if (origin.endsWith('.onrender.com')) {
       callback(null, true);
       return;
     }
@@ -77,20 +82,36 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
-    success: false, 
+  res.status(500).json({
+    success: false,
     message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: 'Route not found' 
+// API 404
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
   });
 });
+
+// Production: serve Vite build (combined Render deploy)
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '..', 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  app.use('*', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Route not found',
+    });
+  });
+}
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)

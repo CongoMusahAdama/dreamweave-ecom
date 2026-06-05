@@ -81,7 +81,10 @@ const ProductImageFlip = ({
 
   return (
     <div
-      className={cn('relative w-full h-full flex items-center justify-center', className)}
+      className={cn(
+        'relative w-full h-full flex items-center justify-center overflow-hidden',
+        className
+      )}
       onMouseEnter={() => enableHoverFlip && setHovering(true)}
       onMouseLeave={() => enableHoverFlip && setHovering(false)}
     >
@@ -90,10 +93,11 @@ const ProductImageFlip = ({
         src={images[displayIndex]}
         alt={alt}
         className={cn(
-          'max-h-full max-w-full object-contain transition-opacity duration-500 ease-out',
+          'block max-h-full max-w-full w-auto h-auto object-contain object-center transition-opacity duration-500 ease-out',
           imageClassName
         )}
         loading="lazy"
+        draggable={false}
       />
 
       {canFlip && showViewLabel && (

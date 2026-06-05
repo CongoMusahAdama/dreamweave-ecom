@@ -175,27 +175,25 @@ const ProductDetail = () => {
             ← Back to shop
           </Link>
 
-          <div className="lg:hidden mb-3">{productMeta}</div>
-
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_minmax(280px,1fr)] gap-4 sm:gap-5 lg:gap-6 lg:items-start">
-            <div className="w-full min-w-0 max-w-[320px] sm:max-w-[340px] lg:max-w-none mx-auto lg:mx-0">
+            <div className="w-full min-w-0 max-w-[320px] sm:max-w-[360px] lg:max-w-none mx-auto lg:mx-0">
               <div
                 className={cn(
-                  'relative flex items-center justify-center bg-[#f5f5f5] border border-black/5',
-                  'w-full aspect-[4/5] max-h-[min(62vw,320px)] sm:max-h-[340px]',
+                  'relative overflow-hidden bg-[#f5f5f5] border border-black/5',
+                  'w-full aspect-[4/5] max-h-[min(72vw,360px)] sm:max-h-[380px]',
                   'lg:max-h-[300px] lg:aspect-square'
                 )}
               >
                 {!isSoldOut && (
-                  <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+                  <div className="absolute top-2.5 right-2.5 z-10">
                     <WishlistButton productId={product.id} />
                   </div>
                 )}
                 <ProductImageFlip
                   images={images}
                   alt={product.name}
-                  className="w-full h-full p-3 sm:p-4"
-                  imageClassName="w-full h-full animate-product-image-in"
+                  className="absolute inset-0 p-4 sm:p-5"
+                  imageClassName="animate-product-image-in"
                   index={selectedImage}
                   onIndexChange={setSelectedImage}
                   showControls={false}
@@ -234,6 +232,8 @@ const ProductDetail = () => {
                   ))}
                 </div>
               )}
+
+              <div className="lg:hidden mt-3 mb-1">{productMeta}</div>
             </div>
 
             <div className="min-w-0 lg:sticky lg:top-[12rem] lg:self-start">
