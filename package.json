@@ -9,8 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "render:build": "npm install && npm run build && npm install --prefix backend",
-    "render:start": "npm start --prefix backend"
+    "render:build": "npm install --prefix backend",
+    "render:start": "npm start --prefix backend",
+    "render:build:full": "npm install --include=dev && npm run build && npm install --prefix backend"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

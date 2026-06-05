@@ -1,10 +1,9 @@
-# HARV DREAMS — Render Blueprint (single web service: React + Express API)
-# Repo layout: if your Git root is the parent "HARV" folder, set Root Directory to "harv" in the dashboard.
-# If your Git root is this "harv" folder, leave Root Directory empty.
+# HARV DREAMS — Render API (frontend hosted on Netlify)
+# Set FRONTEND_URL to your Netlify URL. On Netlify set VITE_API_URL to this service URL.
 
 services:
   - type: web
-    name: harv
+    name: harv-api
     runtime: node
     plan: free
     buildCommand: npm run render:build
@@ -34,6 +33,4 @@ services:
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
-        sync: false
-      - key: VITE_WHATSAPP_NUMBER
         sync: false
