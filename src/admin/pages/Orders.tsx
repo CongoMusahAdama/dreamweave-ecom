@@ -78,8 +78,8 @@ const Orders = () => {
   return (
     <AdminLayout orderCount={total}>
       <AdminPageHeader
-        title="Orders"
-        description="Track every order. Tap to update status, view delivery, or print a receipt."
+        title="Manage orders"
+        description="All customer orders site-wide. Update status, view delivery, print receipts."
       />
 
       <div className="mb-4 space-y-3">

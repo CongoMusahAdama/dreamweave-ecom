@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { ChevronDown, Menu, User } from 'lucide-react';
+import { ChevronDown, Menu, Shield, User } from 'lucide-react';
+import AccountNavLink from '@/components/navigation/AccountNavLink';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { shopLinks, pageLinks } from './nav-links';
 import { STICKY_NAV_CLASS, NAV_LINK_BASE, navLinkClass } from '@/lib/page-layout';
@@ -11,6 +13,7 @@ interface ShopHeaderProps {
 }
 
 const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
+  const { isAdmin } = useAuth();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
@@ -53,16 +56,7 @@ const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
     >
       <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16">
       <div className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-8 md:right-12 lg:right-16 z-10 flex items-center gap-1 sm:gap-3 md:gap-4 min-h-[44px]">
-        <Link
-          to="/account"
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-black hover:opacity-60 sm:min-w-0 sm:min-h-0"
-          aria-label="My account"
-        >
-          <User className="w-5 h-5 sm:hidden" strokeWidth={2} />
-          <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] uppercase">
-            Account
-          </span>
-        </Link>
+        <AccountNavLink className="text-black" />
         <Link
           to="/cart"
           className="min-h-[44px] flex items-center text-[10px] font-bold tracking-[0.2em] uppercase text-black hover:opacity-60 gap-1 px-1"
@@ -174,12 +168,16 @@ const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
 
           <nav className="flex flex-col items-center gap-6 w-full max-w-xs">
             <Link
-              to="/account"
+              to={isAdmin ? '/admin' : '/account'}
               className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 border border-black text-[11px] font-bold tracking-[0.2em] uppercase text-black bg-black/[0.02]"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <User className="w-4 h-4" strokeWidth={2} />
-              My account
+              {isAdmin ? (
+                <Shield className="w-4 h-4" strokeWidth={2} />
+              ) : (
+                <User className="w-4 h-4" strokeWidth={2} />
+              )}
+              {isAdmin ? 'Admin panel' : 'My account'}
             </Link>
 
             <button

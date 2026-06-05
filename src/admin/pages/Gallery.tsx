@@ -80,8 +80,8 @@ const AdminGallery = () => {
   return (
     <AdminLayout>
       <AdminPageHeader
-        title="Gallery"
-        description="Upload lifestyle and product photos shown on the public Gallery page."
+        title="Site gallery"
+        description="Upload photos for the public Gallery page — lifestyle and product shots."
       >
         <button
           type="button"

@@ -80,8 +80,8 @@ const Dashboard = () => {
   return (
     <AdminLayout orderCount={stats.totalOrders} productCount={stats.totalProducts}>
       <AdminPageHeader
-        title="Overview"
-        description="Manage orders, products, and gallery from one place."
+        title="Store overview"
+        description="System management — not your personal shopper account."
       />
 
       <AdminStatGrid stats={stats} loading={loading} />

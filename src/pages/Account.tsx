@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import ShopHeader from '@/components/navigation/ShopHeader';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
@@ -26,7 +26,7 @@ const SECTION_TITLE: Record<AccountSection, string> = {
 };
 
 const Account = () => {
-  const { user, token, logout, refreshUser } = useAuth();
+  const { user, token, logout, refreshUser, isAdmin } = useAuth();
   const { cartCount } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
@@ -117,6 +117,10 @@ const Account = () => {
   const handleOrdersPageChange = (page: number) => {
     setOrdersPage(page);
   };
+
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">

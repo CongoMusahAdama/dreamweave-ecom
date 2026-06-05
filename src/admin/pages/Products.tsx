@@ -103,8 +103,8 @@ const Products = () => {
   return (
     <AdminLayout productCount={total}>
       <AdminPageHeader
-        title="Products"
-        description="Add items to your MongoDB catalog with photos, price, and stock."
+        title="Product catalog"
+        description="Add and remove products for the store — name, photo, price, stock."
       >
         <button
           type="button"

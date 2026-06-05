@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { Search, X, ChevronDown, Menu, User } from 'lucide-react';
+import { Search, X, ChevronDown, Menu, Shield, User } from 'lucide-react';
+import AccountNavLink from '@/components/navigation/AccountNavLink';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { shopLinks, pageLinks } from './nav-links';
 import { STICKY_NAV_CLASS, PAGE_X, NAV_LINK_BASE, navLinkClass } from '@/lib/page-layout';
@@ -14,6 +16,7 @@ interface HeaderProps {
 
 const Header = ({ variant = 'solid' }: HeaderProps) => {
   const { cartCount } = useCart();
+  const { isAdmin } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -95,19 +98,7 @@ const Header = ({ variant = 'solid' }: HeaderProps) => {
           <Search className="w-4 h-4" strokeWidth={2} />
         </button>
 
-        <Link
-          to="/account"
-          className={cn(
-            'min-w-[44px] min-h-[44px] flex items-center justify-center hover:opacity-60 sm:min-w-0 sm:min-h-0',
-            textClass
-          )}
-          aria-label="My account"
-        >
-          <User className="w-5 h-5 sm:hidden" strokeWidth={2} />
-          <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] uppercase">
-            Account
-          </span>
-        </Link>
+        <AccountNavLink className={textClass} textClass={textClass} />
 
         <Link
           to="/cart"
@@ -249,12 +240,16 @@ const Header = ({ variant = 'solid' }: HeaderProps) => {
 
           <nav className="flex flex-col items-center gap-6 w-full max-w-xs">
             <Link
-              to="/account"
+              to={isAdmin ? '/admin' : '/account'}
               className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 border border-black text-[11px] font-bold tracking-[0.2em] uppercase text-black bg-black/[0.02]"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <User className="w-4 h-4" strokeWidth={2} />
-              My account
+              {isAdmin ? (
+                <Shield className="w-4 h-4" strokeWidth={2} />
+              ) : (
+                <User className="w-4 h-4" strokeWidth={2} />
+              )}
+              {isAdmin ? 'Admin panel' : 'My account'}
             </Link>
 
             <button

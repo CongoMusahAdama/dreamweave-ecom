@@ -11,9 +11,9 @@ import {
 
 const NAV = [
   { href: '/admin', label: 'Overview', short: 'Home', icon: LayoutDashboard, exact: true },
-  { href: '/admin/orders', label: 'Orders', short: 'Orders', icon: ShoppingCart },
-  { href: '/admin/products', label: 'Products', short: 'Stock', icon: Package },
-  { href: '/admin/gallery', label: 'Gallery', short: 'Photos', icon: Images },
+  { href: '/admin/orders', label: 'Manage orders', short: 'Orders', icon: ShoppingCart },
+  { href: '/admin/products', label: 'Product catalog', short: 'Stock', icon: Package },
+  { href: '/admin/gallery', label: 'Site gallery', short: 'Photos', icon: Images },
 ];
 
 function getInitials(name?: string) {
@@ -48,7 +48,7 @@ const AdminSidebar = ({
   return (
     <aside className="w-full lg:w-64 xl:w-72 shrink-0">
       <div className="lg:sticky lg:top-[14rem] flex flex-col">
-        <div className="mb-4 sm:mb-6 lg:mb-8 p-4 sm:p-5 border border-black/10 bg-black/[0.02]">
+        <div className="mb-4 sm:mb-6 lg:mb-8 p-4 sm:p-5 border border-black/10 border-t-2 border-t-black bg-black/[0.03]">
           <div className="flex items-start gap-3">
             <span
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-black bg-black text-[10px] font-bold tracking-[0.06em] text-white"
@@ -58,8 +58,8 @@ const AdminSidebar = ({
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-[9px] font-bold tracking-[0.25em] uppercase text-black/40">
-                  Admin
+                <p className="text-[9px] font-bold tracking-[0.25em] uppercase text-black">
+                  Admin panel
                 </p>
                 <button
                   type="button"
@@ -77,6 +77,9 @@ const AdminSidebar = ({
               <p className="text-[9px] font-bold text-black/45 mt-0.5 break-all line-clamp-2">
                 {userEmail}
               </p>
+              <p className="text-[8px] font-bold tracking-[0.1em] uppercase text-black/35 mt-2 leading-relaxed">
+                Manage store orders, catalog & gallery
+              </p>
             </div>
           </div>
 
@@ -84,13 +87,13 @@ const AdminSidebar = ({
             <div className="text-center py-1">
               <p className="text-xl sm:text-lg font-bold tabular-nums">{orderCount}</p>
               <p className="text-[8px] font-bold tracking-[0.15em] uppercase text-black/40 mt-0.5">
-                Orders
+                Store orders
               </p>
             </div>
             <div className="text-center py-1 border-l border-black/10">
               <p className="text-xl sm:text-lg font-bold tabular-nums">{productCount}</p>
               <p className="text-[8px] font-bold tracking-[0.15em] uppercase text-black/40 mt-0.5">
-                Products
+                In catalog
               </p>
             </div>
           </div>
