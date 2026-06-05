@@ -20,9 +20,7 @@ import Account from './pages/Account';
 import AdminDashboard from './admin/pages/Dashboard';
 import AdminProducts from './admin/pages/Products';
 import AdminOrders from './admin/pages/Orders';
-import AdminCustomers from './admin/pages/Customers';
-import AdminAnalytics from './admin/pages/Analytics';
-import AdminSettings from './admin/pages/Settings';
+import AdminGallery from './admin/pages/Gallery';
 
 import ErrorBoundary from './components/ui/error-boundary';
 
@@ -157,30 +155,17 @@ const AppContent = () => {
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/admin/customers" 
+              <Route
+                path="/admin/gallery"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminCustomers />
+                    <AdminGallery />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/admin/analytics" 
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminAnalytics />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/settings" 
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminSettings />
-                  </ProtectedRoute>
-                } 
-              />
+              <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin/settings" element={<Navigate to="/admin" replace />} />
               
               {/* Catch all route */}
               <Route path="*" element={<Navigate to="/" replace />} />

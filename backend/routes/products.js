@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { body, validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
@@ -147,15 +148,18 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
         const result = await uploadToCloudinary(req.file.path, 'products');
         frontImage = result.secure_url;
       } catch (uploadError) {
-        return res.status(400).json({
-          success: false,
-          message: 'Error uploading image'
-        });
+        console.error('Cloudinary upload failed, using local path:', uploadError.message);
+        frontImage = `/uploads/${path.basename(req.file.path)}`;
       }
     }
 
-    // For now, we'll use the same image for both front and back
-    // In a real app, you'd handle separate front/back image uploads
+    if (!frontImage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product image is required',
+      });
+    }
+
     backImage = frontImage;
 
     // Create product

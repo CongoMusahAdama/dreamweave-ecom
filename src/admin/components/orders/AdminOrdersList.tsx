@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, FileText } from 'lucide-react';
 import type { AdminShopOrder } from '@/admin/types/admin';
 import AdminStatusBadge from '@/admin/components/ui/AdminStatusBadge';
+import OrderReceipt from '@/admin/components/orders/OrderReceipt';
 import { formatGhs, formatShortDate } from '@/admin/lib/format';
 import { getProductById } from '@/data/products';
+import { ADMIN_BTN_OUTLINE } from '@/admin/lib/apiForm';
 import { cn } from '@/lib/utils';
 
 const STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
@@ -40,6 +42,7 @@ const AdminOrdersList = ({
   pagination,
 }: AdminOrdersListProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<AdminShopOrder | null>(null);
 
   if (loading) {
     return (
@@ -159,11 +162,24 @@ const AdminOrdersList = ({
                     ))}
                   </select>
                 </label>
+
+                <button
+                  type="button"
+                  onClick={() => setReceiptOrder(order)}
+                  className={`w-full mt-2 ${ADMIN_BTN_OUTLINE} gap-2`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Generate receipt
+                </button>
               </div>
             )}
           </article>
         );
       })}
+
+      {receiptOrder && (
+        <OrderReceipt order={receiptOrder} onClose={() => setReceiptOrder(null)} />
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 pt-2 border-t border-black/10">

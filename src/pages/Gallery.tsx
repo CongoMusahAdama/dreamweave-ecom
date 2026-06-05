@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '@/lib/api';
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
@@ -17,11 +18,7 @@ interface GalleryItem {
   caption: string;
 }
 
-const Gallery = () => {
-  const [filter, setFilter] = useState('all');
-  const navigate = useNavigate();
-
-  const lifestyleImages: GalleryItem[] = [
+const STATIC_GALLERY: GalleryItem[] = [
     {
       id: 1,
       name: "Urban Vision",
@@ -64,7 +61,35 @@ const Gallery = () => {
       category: "caps",
       caption: "Embroidered cap with HARV DREAMS logo"
     }
-  ];
+];
+
+const Gallery = () => {
+  const [filter, setFilter] = useState('all');
+  const [lifestyleImages, setLifestyleImages] = useState<GalleryItem[]>(STATIC_GALLERY);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    apiFetch<{
+      success: boolean;
+      data: { items: { _id: string; name: string; image: string; category: string; caption?: string }[] };
+    }>('/api/gallery')
+      .then((res) => {
+        if (res.data.items.length > 0) {
+          setLifestyleImages(
+            res.data.items.map((item, i) => ({
+              id: i + 1,
+              name: item.name,
+              image: item.image,
+              category: item.category,
+              caption: item.caption || '',
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+  }, []);
 
   const categories = [
     { key: 'all', label: 'All' },

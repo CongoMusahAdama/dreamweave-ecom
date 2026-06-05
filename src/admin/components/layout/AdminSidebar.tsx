@@ -4,9 +4,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  Users,
-  BarChart3,
-  Settings,
+  Images,
   LogOut,
   ExternalLink,
 } from 'lucide-react';
@@ -15,9 +13,7 @@ const NAV = [
   { href: '/admin', label: 'Overview', short: 'Home', icon: LayoutDashboard, exact: true },
   { href: '/admin/orders', label: 'Orders', short: 'Orders', icon: ShoppingCart },
   { href: '/admin/products', label: 'Products', short: 'Stock', icon: Package },
-  { href: '/admin/customers', label: 'Customers', short: 'People', icon: Users },
-  { href: '/admin/analytics', label: 'Analytics', short: 'Stats', icon: BarChart3 },
-  { href: '/admin/settings', label: 'Settings', short: 'Setup', icon: Settings },
+  { href: '/admin/gallery', label: 'Gallery', short: 'Photos', icon: Images },
 ];
 
 function getInitials(name?: string) {
@@ -101,7 +97,7 @@ const AdminSidebar = ({
         </div>
 
         <nav
-          className="grid grid-cols-3 gap-2 lg:flex lg:flex-col lg:gap-2"
+          className="grid grid-cols-4 gap-2 lg:flex lg:flex-col lg:gap-2"
           aria-label="Admin sections"
         >
           {NAV.map((item) => {
@@ -128,7 +124,7 @@ const AdminSidebar = ({
           })}
         </nav>
 
-        <div className="mt-4 lg:mt-6 space-y-1">
+        <div className="mt-4 lg:mt-6">
           <Link
             to="/products"
             className="flex items-center justify-center lg:justify-start w-full gap-2 text-[10px] font-bold tracking-[0.2em] uppercase text-black/40 hover:text-black transition-colors min-h-[44px] lg:min-h-[48px]"

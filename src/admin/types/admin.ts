@@ -46,3 +46,14 @@ export interface DashboardPayload {
   recentOrders: AdminShopOrder[];
   lowStockProducts: { _id: string; name: string; stock: number; category: string }[];
 }
+
+export interface GalleryItem {
+  _id: string;
+  name: string;
+  caption?: string;
+  category: string;
+  image: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt?: string;
+}

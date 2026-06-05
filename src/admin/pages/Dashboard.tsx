@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Package, ShoppingCart, Images } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminStatGrid from '../components/ui/AdminStatGrid';
@@ -19,11 +20,31 @@ const emptyStats: AdminStats = {
   lowStockProducts: 0,
 };
 
+const QUICK = [
+  {
+    to: '/admin/orders',
+    label: 'Track orders',
+    hint: 'Update status & print receipts',
+    icon: ShoppingCart,
+  },
+  {
+    to: '/admin/products',
+    label: 'Add products',
+    hint: 'Upload photos, price & stock',
+    icon: Package,
+  },
+  {
+    to: '/admin/gallery',
+    label: 'Gallery',
+    hint: 'Publish lifestyle photos',
+    icon: Images,
+  },
+];
+
 const Dashboard = () => {
   const { token } = useAuth();
   const [stats, setStats] = useState<AdminStats>(emptyStats);
   const [recentOrders, setRecentOrders] = useState<AdminShopOrder[]>([]);
-  const [lowStock, setLowStock] = useState<DashboardPayload['lowStockProducts']>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,13 +61,11 @@ const Dashboard = () => {
         if (!cancelled) {
           setStats(res.data.stats);
           setRecentOrders(res.data.recentOrders || []);
-          setLowStock(res.data.lowStockProducts || []);
         }
       } catch {
         if (!cancelled) {
           setStats(emptyStats);
           setRecentOrders([]);
-          setLowStock([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -62,100 +81,74 @@ const Dashboard = () => {
     <AdminLayout orderCount={stats.totalOrders} productCount={stats.totalProducts}>
       <AdminPageHeader
         title="Overview"
-        description="Sales, orders, and stock at a glance for HARV DREAMS."
+        description="Manage orders, products, and gallery from one place."
       />
 
       <AdminStatGrid stats={stats} loading={loading} />
 
-      <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2">
-          <AdminPanel
-            title="Recent orders"
-            action={
-              <Link
-                to="/admin/orders"
-                className="text-[9px] font-bold tracking-[0.12em] uppercase text-black/50 hover:text-black"
-              >
-                View all →
-              </Link>
-            }
-          >
-            {loading ? (
-              <p className="text-[10px] font-bold uppercase text-black/40 animate-pulse">
-                Loading…
-              </p>
-            ) : recentOrders.length === 0 ? (
-              <p className="text-[10px] font-bold uppercase text-black/40">No orders yet</p>
-            ) : (
-              <ul className="divide-y divide-black/10 -mx-4 sm:-mx-5">
-                {recentOrders.map((order) => (
-                  <li
-                    key={order._id}
-                    className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                  >
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-black">
-                        {order.orderNumber}
-                      </p>
-                      <p className="text-[9px] font-bold text-black/45 mt-0.5">
-                        {formatShortDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AdminStatusBadge status={order.status} />
-                      <span className="text-[11px] font-bold tabular-nums">
-                        {formatGhs(order.totalAmount)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </AdminPanel>
-        </div>
+      <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {QUICK.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="border border-black/10 p-4 min-h-[88px] hover:border-black/30 transition-colors flex flex-col justify-between"
+            >
+              <Icon className="w-4 h-4 text-black/50" strokeWidth={2} />
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black">
+                  {item.label}
+                </p>
+                <p className="text-[9px] font-bold text-black/40 mt-1 uppercase">{item.hint}</p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
 
-        <div className="space-y-4 sm:space-y-6">
-          <AdminPanel title="Quick links">
-            <div className="space-y-2">
-              {[
-                { to: '/admin/orders', label: 'Manage orders', hint: 'Update status & delivery' },
-                { to: '/admin/products', label: 'Product catalog', hint: 'Stock & listings' },
-                { to: '/admin/customers', label: 'Customers', hint: 'Accounts & contact' },
-              ].map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="block border border-black/10 px-4 py-3 min-h-[48px] hover:border-black/30 transition-colors"
+      <div className="mt-6 sm:mt-8">
+        <AdminPanel
+          title="Recent orders"
+          action={
+            <Link
+              to="/admin/orders"
+              className="text-[9px] font-bold tracking-[0.12em] uppercase text-black/50 hover:text-black"
+            >
+              View all →
+            </Link>
+          }
+        >
+          {loading ? (
+            <p className="text-[10px] font-bold uppercase text-black/40 animate-pulse">Loading…</p>
+          ) : recentOrders.length === 0 ? (
+            <p className="text-[10px] font-bold uppercase text-black/40">No orders yet</p>
+          ) : (
+            <ul className="divide-y divide-black/10 -mx-4 sm:-mx-5">
+              {recentOrders.map((order) => (
+                <li
+                  key={order._id}
+                  className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
                 >
-                  <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black">
-                    {link.label}
-                  </p>
-                  <p className="text-[9px] font-bold text-black/40 mt-1 uppercase">{link.hint}</p>
-                </Link>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-black">
+                      {order.orderNumber}
+                    </p>
+                    <p className="text-[9px] font-bold text-black/45 mt-0.5">
+                      {formatShortDate(order.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AdminStatusBadge status={order.status} />
+                    <span className="text-[11px] font-bold tabular-nums">
+                      {formatGhs(order.totalAmount)}
+                    </span>
+                  </div>
+                </li>
               ))}
-            </div>
-          </AdminPanel>
-
-          <AdminPanel title="Low stock">
-            {lowStock.length === 0 ? (
-              <p className="text-[10px] font-bold uppercase text-black/40">
-                {loading ? 'Loading…' : 'All products stocked'}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {lowStock.map((p) => (
-                  <li
-                    key={p._id}
-                    className="flex justify-between gap-2 text-[9px] font-bold uppercase"
-                  >
-                    <span className="text-black truncate">{p.name}</span>
-                    <span className="text-amber-800 shrink-0">{p.stock} left</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </AdminPanel>
-        </div>
+            </ul>
+          )}
+        </AdminPanel>
       </div>
     </AdminLayout>
   );

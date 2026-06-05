@@ -1,0 +1,196 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import AdminLayout from '../components/layout/AdminLayout';
+import AdminPageHeader from '../components/ui/AdminPageHeader';
+import AdminPanel from '../components/ui/AdminPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
+import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
+import type { GalleryItem } from '../types/admin';
+
+const CATEGORIES = ['lifestyle', 'hoodies', 'tees', 'jerseys', 'caps', 'accessories'] as const;
+
+const emptyForm = { name: '', caption: '', category: 'lifestyle' };
+
+const AdminGallery = () => {
+  const { token } = useAuth();
+  const [items, setItems] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<{ success: boolean; data: { items: GalleryItem[] } }>(
+        '/api/gallery'
+      );
+      setItems(res.data.items);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !imageFile || !form.name.trim()) {
+      setError('Name and image are required');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('name', form.name.trim());
+      fd.append('caption', form.caption.trim());
+      fd.append('category', form.category);
+      fd.append('image', imageFile);
+
+      await apiFormFetch('/api/gallery', fd, { token });
+      setForm(emptyForm);
+      setImageFile(null);
+      setShowForm(false);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!token || !window.confirm('Remove this image from the gallery?')) return;
+    try {
+      await apiFetch(`/api/gallery/${id}`, { method: 'DELETE', token });
+      load();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <AdminLayout>
+      <AdminPageHeader
+        title="Gallery"
+        description="Upload lifestyle and product photos shown on the public Gallery page."
+      >
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          className={ADMIN_BTN_OUTLINE}
+        >
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
+          {showForm ? 'Cancel' : 'Add image'}
+        </button>
+      </AdminPageHeader>
+
+      {showForm && (
+        <AdminPanel title="New gallery image">
+          <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+            {error && (
+              <p className="text-[9px] font-bold uppercase text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                {error}
+              </p>
+            )}
+            <label className="block">
+              <span className={ADMIN_LABEL}>Title *</span>
+              <input
+                className={ADMIN_INPUT}
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="block">
+              <span className={ADMIN_LABEL}>Caption</span>
+              <input
+                className={ADMIN_INPUT}
+                value={form.caption}
+                onChange={(e) => setForm((f) => ({ ...f, caption: e.target.value }))}
+              />
+            </label>
+            <label className="block">
+              <span className={ADMIN_LABEL}>Category</span>
+              <select
+                className={ADMIN_INPUT}
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className={ADMIN_LABEL}>Image *</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="text-[10px] font-bold uppercase w-full min-h-[48px]"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                required
+              />
+            </label>
+            <button type="submit" disabled={saving} className={ADMIN_BTN}>
+              {saving ? 'Uploading…' : 'Publish to gallery'}
+            </button>
+          </form>
+        </AdminPanel>
+      )}
+
+      {loading ? (
+        <div className="py-12 text-center border border-black/10">
+          <p className="text-[10px] font-bold uppercase text-black/40 animate-pulse">Loading…</p>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="border border-dashed border-black/20 p-8 text-center">
+          <p className="text-[11px] font-bold uppercase text-black/50">Gallery is empty</p>
+          <p className="text-[10px] font-bold text-black/40 mt-2 uppercase">
+            Add your first image above
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {items.map((item) => (
+            <article key={item._id} className="border border-black/10 bg-white group relative">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-full aspect-[4/5] object-cover"
+              />
+              <div className="p-3">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-black line-clamp-1">
+                  {item.name}
+                </p>
+                <p className="text-[8px] font-bold uppercase text-black/40 mt-0.5">
+                  {item.category}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(item._id)}
+                className="absolute top-2 right-2 min-h-[36px] min-w-[36px] flex items-center justify-center bg-white/95 border border-black/10 text-red-600 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                aria-label="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+    </AdminLayout>
+  );
+};
+
+export default AdminGallery;
