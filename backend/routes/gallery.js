@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const GalleryItem = require('../models/GalleryItem');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingleImage, uploadToCloudinary } = require('../middleware/upload');
+const { publicApiBase, normalizeStoredImageUrl } = require('../lib/imageUrls');
 
 const router = express.Router();
 
@@ -11,12 +12,11 @@ async function resolveImageUrl(file) {
   if (!file) return '';
   try {
     const result = await uploadToCloudinary(file.path, 'gallery');
-    return result.secure_url;
+    if (result?.secure_url) return result.secure_url;
   } catch (err) {
     console.error('Gallery Cloudinary upload failed, using local path:', err.message);
-    const filename = path.basename(file.path);
-    return `/uploads/${filename}`;
   }
+  return `${publicApiBase()}/uploads/${path.basename(file.path)}`;
 }
 
 // @desc    List gallery images (public)
@@ -25,7 +25,16 @@ router.get('/', async (req, res) => {
   try {
     const items = await GalleryItem.find({ isActive: true })
       .sort({ sortOrder: 1, createdAt: -1 });
-    res.status(200).json({ success: true, data: { items } });
+    res.status(200).json({
+      success: true,
+      data: {
+        items: items.map((item) => {
+          const doc = item.toObject ? item.toObject() : item;
+          if (doc.image) doc.image = normalizeStoredImageUrl(doc.image);
+          return doc;
+        }),
+      },
+    });
   } catch (error) {
     console.error('Gallery list error:', error);
     res.status(500).json({ success: false, message: 'Error fetching gallery' });

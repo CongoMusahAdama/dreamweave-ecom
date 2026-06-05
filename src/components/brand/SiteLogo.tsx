@@ -37,7 +37,7 @@ const SiteLogo = ({ variant = 'light', size = 'nav', className }: SiteLogoProps)
         className
       )}
       decoding="async"
-      fetchPriority="high"
+      fetchpriority="high"
     />
   );
 };

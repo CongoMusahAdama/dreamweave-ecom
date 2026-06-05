@@ -41,7 +41,7 @@ const AccountSidebar = ({
   onSignOut,
 }: AccountSidebarProps) => (
   <aside className="w-full lg:w-64 xl:w-72 shrink-0">
-    <div className="lg:sticky lg:top-[14rem] flex flex-col">
+      <div className="lg:sticky lg:top-[12rem] flex flex-col">
       <div className="mb-4 sm:mb-6 lg:mb-8 p-4 sm:p-5 border border-black/10 bg-black/[0.02]">
         <div className="flex items-start gap-3">
           {isAuthenticated && (

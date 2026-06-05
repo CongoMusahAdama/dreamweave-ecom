@@ -1,0 +1,68 @@
+const crypto = require('crypto');
+const ShopOrder = require('../models/ShopOrder');
+
+function isPaystackConfigured() {
+  return Boolean(process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_PUBLIC_KEY);
+}
+
+function frontendBaseUrl() {
+  return (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+}
+
+async function paystackRequest(path, options = {}) {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) {
+    const err = new Error('Paystack is not configured on the server');
+    err.code = 'PAYSTACK_NOT_CONFIGURED';
+    throw err;
+  }
+
+  const res = await fetch(`https://api.paystack.co${path}`, {
+    method: options.method || 'GET',
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      'Content-Type': 'application/json',
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  return res.json();
+}
+
+function verifyWebhookSignature(rawBody, signature) {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || !signature) return false;
+  const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+  return hash === signature;
+}
+
+async function markOrderPaidByReference(reference) {
+  const order = await ShopOrder.findOne({ paystackReference: reference });
+  if (!order) return null;
+  if (order.paymentStatus === 'paid') return order;
+
+  order.paymentStatus = 'paid';
+  if (order.status === 'pending') {
+    order.status = 'confirmed';
+  }
+  await order.save();
+  return order;
+}
+
+async function verifyTransactionReference(reference) {
+  const paystack = await paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`);
+  if (!paystack.status || paystack.data?.status !== 'success') {
+    return { ok: false, paystack };
+  }
+  const order = await markOrderPaidByReference(reference);
+  return { ok: true, order, paystack };
+}
+
+module.exports = {
+  isPaystackConfigured,
+  frontendBaseUrl,
+  paystackRequest,
+  verifyWebhookSignature,
+  markOrderPaidByReference,
+  verifyTransactionReference,
+};

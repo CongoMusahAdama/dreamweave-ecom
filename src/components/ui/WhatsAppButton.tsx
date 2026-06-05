@@ -1,9 +1,9 @@
 import { MessageCircle } from 'lucide-react';
-import { openWhatsApp } from '@/lib/whatsapp';
+import { buildSupportMessage, openWhatsApp } from '@/lib/whatsapp';
 
 const WhatsAppButton = () => {
   const handleClick = () => {
-    openWhatsApp("Hello HARV DREAMS, I'd like to contact you for support.");
+    openWhatsApp(buildSupportMessage());
   };
 
   return (

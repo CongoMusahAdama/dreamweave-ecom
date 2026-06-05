@@ -5,19 +5,19 @@ type AdminPageHeaderProps = {
 };
 
 const AdminPageHeader = ({ title, description, children }: AdminPageHeaderProps) => (
-  <header className="mb-4 pb-4 border-b border-black/10 sm:mb-6 sm:pb-6">
+  <header className="mb-3 pb-3 border-b border-black/10 sm:mb-6 sm:pb-6">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 className="text-sm sm:text-base font-bold tracking-[0.12em] uppercase text-black">
+      <div className="min-w-0">
+        <h1 className="text-base sm:text-lg font-bold tracking-[0.1em] uppercase text-black leading-tight">
           {title}
         </h1>
         {description && (
-          <p className="text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-black/45 mt-2 leading-relaxed max-w-xl">
+          <p className="text-[10px] sm:text-[10px] font-bold tracking-[0.08em] uppercase text-black/45 mt-1.5 leading-relaxed max-w-xl">
             {description}
           </p>
         )}
       </div>
-      {children}
+      {children ? <div className="shrink-0 w-full sm:w-auto">{children}</div> : null}
     </div>
   </header>
 );

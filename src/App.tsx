@@ -4,6 +4,9 @@ import CartNavBridge from './components/shop/CartNavBridge';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { ShopCatalogProvider } from './contexts/ShopCatalogContext';
+import { PaystackProvider } from './contexts/PaystackContext';
+import PaymentCallback from './pages/PaymentCallback';
 import { useState } from 'react';
 import AuthModal from './components/auth/AuthModal';
 
@@ -21,6 +24,7 @@ import AdminDashboard from './admin/pages/Dashboard';
 import AdminProducts from './admin/pages/Products';
 import AdminOrders from './admin/pages/Orders';
 import AdminGallery from './admin/pages/Gallery';
+import AdminReceipts from './admin/pages/Receipts';
 
 import ErrorBoundary from './components/ui/error-boundary';
 
@@ -102,6 +106,8 @@ const AppContent = () => {
     <Router>
       <RouteScrollToTop />
       <CartProvider>
+      <ShopCatalogProvider>
+      <PaystackProvider>
       <CartNavBridge />
       <Toaster />
       <div className="min-h-screen flex flex-col">
@@ -119,6 +125,7 @@ const AppContent = () => {
               <Route path="/products" element={<Products />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
               <Route
                 path="/account"
                 element={
@@ -163,6 +170,14 @@ const AppContent = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/receipts"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <AdminReceipts />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
               <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
               <Route path="/admin/settings" element={<Navigate to="/admin" replace />} />
@@ -180,6 +195,8 @@ const AppContent = () => {
           onSuccess={handleAuthSuccess}
         />
       </div>
+      </PaystackProvider>
+      </ShopCatalogProvider>
       </CartProvider>
     </Router>
   );

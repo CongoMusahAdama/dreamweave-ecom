@@ -6,6 +6,9 @@ import { COLOR_PREFERENCES, resolveColorPreference } from '@/lib/product-options
 import { isDeliveryComplete } from '@/lib/delivery';
 import DeliveryDetailsForm from '@/components/account/DeliveryDetailsForm';
 import CheckoutOptions from '@/components/shop/CheckoutOptions';
+import { usePaystack } from '@/contexts/PaystackContext';
+import { useCart } from '@/contexts/CartContext';
+import { showAddedToCartToast, ADD_TO_CART_BTN } from '@/lib/cart-toast';
 import { cn } from '@/lib/utils';
 
 const fieldLabel = 'block text-[9px] font-bold tracking-[0.18em] uppercase text-black mb-1';
@@ -48,10 +51,25 @@ const ProductPurchasePanel = ({
   paystackLoading,
   checkoutError,
 }: ProductPurchasePanelProps) => {
+  const { enabled: paystackEnabled } = usePaystack();
+  const { addToCart, openCart } = useCart();
   const { size, quantity, colorChoice, colorCustom, delivery } = state;
   const colorResolved = resolveColorPreference(colorChoice, colorCustom);
   const needsCustomColor = colorChoice.includes('Other');
+  const canAddToCart = Boolean(size?.trim());
   const canCheckout = Boolean(size && colorChoice && (!needsCustomColor || colorCustom.trim()));
+
+  const handleAddToCart = () => {
+    if (!canAddToCart) return;
+    addToCart(product, size, quantity);
+    showAddedToCartToast({
+      name: product.name,
+      size,
+      price: product.price,
+      image: product.frontImage,
+      onViewCart: () => openCart(),
+    });
+  };
   const deliverySaved = isDeliveryComplete(delivery);
   const [deliveryOpen, setDeliveryOpen] = useState(!deliverySaved);
 
@@ -168,13 +186,26 @@ const ProductPurchasePanel = ({
         </p>
       )}
 
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={!canAddToCart}
+        className={ADD_TO_CART_BTN}
+      >
+        Add to cart
+      </button>
+
       {checkoutError && (
         <p className="text-[9px] font-bold text-red-600 uppercase tracking-wider">{checkoutError}</p>
       )}
 
-      {/* Checkout first — visible without scrolling */}
+      <p className="text-[9px] font-bold tracking-[0.1em] uppercase text-black/40 text-center">
+        Or checkout now
+      </p>
+
       <CheckoutOptions
         isAuthenticated={isAuthenticated}
+        paystackEnabled={paystackEnabled}
         onWhatsApp={() => handleCheckout(onWhatsApp)}
         onPaystack={() => handleCheckout(onPaystack)}
         onSignIn={onSignIn}

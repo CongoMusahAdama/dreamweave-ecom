@@ -3,8 +3,11 @@ import { Plus, Trash2 } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminPanel from '../components/ui/AdminPanel';
+import AdminSingleImagePicker from '../components/ui/AdminSingleImagePicker';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminConfirm } from '@/admin/contexts/AdminConfirmContext';
 import { apiFetch } from '@/lib/api';
+import { productImageUrl } from '@/lib/productImage';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
 import type { GalleryItem } from '../types/admin';
 
@@ -12,15 +15,29 @@ const CATEGORIES = ['lifestyle', 'hoodies', 'tees', 'jerseys', 'caps', 'accessor
 
 const emptyForm = { name: '', caption: '', category: 'lifestyle' };
 
-const AdminGallery = () => {
+const GalleryContent = () => {
   const { token } = useAuth();
+  const { confirm } = useAdminConfirm();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const resetImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    resetImage();
+    setError('');
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,8 +73,7 @@ const AdminGallery = () => {
       fd.append('image', imageFile);
 
       await apiFormFetch('/api/gallery', fd, { token });
-      setForm(emptyForm);
-      setImageFile(null);
+      resetForm();
       setShowForm(false);
       load();
     } catch (err) {
@@ -67,8 +83,16 @@ const AdminGallery = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!token || !window.confirm('Remove this image from the gallery?')) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!token) return;
+    const ok = await confirm({
+      title: 'Remove gallery image?',
+      message: `"${name}" will be removed from the public gallery. This cannot be undone.`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Keep image',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/api/gallery/${id}`, { method: 'DELETE', token });
       load();
@@ -78,14 +102,17 @@ const AdminGallery = () => {
   };
 
   return (
-    <AdminLayout>
+    <>
       <AdminPageHeader
         title="Site gallery"
         description="Upload photos for the public Gallery page — lifestyle and product shots."
       >
         <button
           type="button"
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => {
+            if (showForm) resetForm();
+            setShowForm((v) => !v);
+          }}
           className={ADMIN_BTN_OUTLINE}
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
@@ -110,6 +137,19 @@ const AdminGallery = () => {
                 required
               />
             </label>
+
+            <AdminSingleImagePicker
+              file={imageFile}
+              preview={imagePreview}
+              onChange={(file, preview) => {
+                setImageFile(file);
+                setImagePreview(preview);
+              }}
+              label="Image *"
+              hint="Preview your photo before publishing."
+              required
+            />
+
             <label className="block">
               <span className={ADMIN_LABEL}>Caption</span>
               <input
@@ -131,16 +171,6 @@ const AdminGallery = () => {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="block">
-              <span className={ADMIN_LABEL}>Image *</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="text-[10px] font-bold uppercase w-full min-h-[48px]"
-                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                required
-              />
             </label>
             <button type="submit" disabled={saving} className={ADMIN_BTN}>
               {saving ? 'Uploading…' : 'Publish to gallery'}
@@ -165,7 +195,7 @@ const AdminGallery = () => {
           {items.map((item) => (
             <article key={item._id} className="border border-black/10 bg-white group relative">
               <img
-                src={item.image}
+                src={productImageUrl(item.image)}
                 alt={item.name}
                 className="w-full aspect-[4/5] object-cover"
               />
@@ -179,7 +209,7 @@ const AdminGallery = () => {
               </div>
               <button
                 type="button"
-                onClick={() => handleDelete(item._id)}
+                onClick={() => handleDelete(item._id, item.name)}
                 className="absolute top-2 right-2 min-h-[36px] min-w-[36px] flex items-center justify-center bg-white/95 border border-black/10 text-red-600 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                 aria-label="Delete"
               >
@@ -189,8 +219,14 @@ const AdminGallery = () => {
           ))}
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 };
+
+const AdminGallery = () => (
+  <AdminLayout>
+    <GalleryContent />
+  </AdminLayout>
+);
 
 export default AdminGallery;

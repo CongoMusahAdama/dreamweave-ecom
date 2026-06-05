@@ -60,6 +60,10 @@ const productSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Stock cannot be negative']
   },
+  soldOut: {
+    type: Boolean,
+    default: false,
+  },
   sku: {
     type: String,
     unique: true,

@@ -2,12 +2,13 @@ import type { CartItem } from '@/contexts/CartContext';
 import type { ShopProduct } from '@/data/products';
 import { getProductById } from '@/data/products';
 import type { DeliveryDetails, ShopOrder } from '@/types/customer';
-import { formatDeliveryBlock } from '@/lib/delivery';
 
 /** Set in harv/.env as VITE_WHATSAPP_NUMBER=233XXXXXXXXX (country code, no + or spaces) */
 const rawNumber = import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined;
 
 export const WHATSAPP_NUMBER = (rawNumber || '233201274491').replace(/\D/g, '');
+
+const DIVIDER = '────────────────';
 
 /** Public URL for product images (WhatsApp prefilled text supports links, not embedded images) */
 export function absoluteImageUrl(path: string): string {
@@ -23,15 +24,65 @@ export function openWhatsApp(message: string) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
-function deliverySection(delivery?: DeliveryDetails | null) {
-  if (!delivery) return [];
-  return ['', formatDeliveryBlock(delivery)];
+function formatCedis(amount: number) {
+  return `₵${amount.toLocaleString('en-GH')}`;
 }
 
-function imageLine(imagePath: string, label = 'Image') {
+function section(title: string) {
+  return [`*${title}*`, DIVIDER];
+}
+
+function greeting(intro: string) {
+  return ['Hello HARV DREAMS Team,', '', intro, ''];
+}
+
+function closing(note: string) {
+  return ['', note, '', 'Thank you.'];
+}
+
+function formatDeliveryForWhatsApp(delivery: DeliveryDetails): string[] {
+  const lines = [
+    ...section('DELIVERY'),
+    `Name: ${delivery.fullName}`,
+    `Phone: ${delivery.phone}`,
+    `Country: ${delivery.country}`,
+  ];
+
+  if (delivery.deliveryMethod === 'pickup') {
+    lines.push('Method: Pickup');
+    lines.push(`Pickup location: ${delivery.pickupStation}`);
+    if (delivery.city || delivery.region) {
+      lines.push(`Area: ${[delivery.city, delivery.region].filter(Boolean).join(', ')}`);
+    }
+  } else {
+    lines.push('Method: Home delivery');
+    lines.push(`Address: ${delivery.street}`);
+    lines.push(`${delivery.city}, ${delivery.region}`);
+  }
+
+  return lines;
+}
+
+function deliverySection(delivery?: DeliveryDetails | null) {
+  if (!delivery) return [];
+  return ['', ...formatDeliveryForWhatsApp(delivery)];
+}
+
+function imageLines(imagePath: string, label: string) {
   const url = absoluteImageUrl(imagePath);
   if (!url) return [];
   return [`${label}: ${url}`];
+}
+
+function formatCartItem(item: CartItem, index: number): string[] {
+  const subtotal = item.priceAmount * item.quantity;
+  return [
+    `${index + 1}. *${item.name}*`,
+    `   Size: ${item.size}  ·  Qty: ${item.quantity}  ·  ${item.price} each`,
+    `   Subtotal: ${formatCedis(subtotal)}`,
+    ...imageLines(item.frontImage, 'Image').map((line) => `   ${line}`),
+    '',
+  ];
 }
 
 export function buildSingleProductOrderMessage(
@@ -42,31 +93,42 @@ export function buildSingleProductOrderMessage(
   options?: { colorPreference?: string }
 ) {
   const lineTotal = product.priceAmount * quantity;
-  const imageUrl = absoluteImageUrl(product.frontImage);
-  const colorLine = options?.colorPreference?.trim()
-    ? `Color preference: ${options.colorPreference.trim()}`
-    : '';
+  const extraImages = product.images?.length > 1 ? product.images.slice(1, 4) : [];
 
-  return [
-    'Hello HARV DREAMS, I would like to place an order:',
-    '',
-    `Product: ${product.name}`,
+  const productLines = [
+    ...section('PRODUCT'),
+    `Name: ${product.name}`,
     `Size: ${size}`,
     `Quantity: ${quantity}`,
-    ...(colorLine ? [colorLine] : []),
-    `Price: ${product.price}${quantity > 1 ? ' each' : ''}`,
-    `Line total: ₵${lineTotal}`,
-    ...imageLine(product.frontImage, 'Product image'),
-    ...(product.images?.length > 1
-      ? product.images.slice(1, 4).flatMap((src, i) => imageLine(src, `View ${i + 2}`))
+    ...(options?.colorPreference?.trim()
+      ? [`Color preference: ${options.colorPreference.trim()}`]
       : []),
+    `Unit price: ${product.price}`,
+    `Line total: ${formatCedis(lineTotal)}`,
+  ];
+
+  const imageSection =
+    product.frontImage || extraImages.length
+      ? [
+          '',
+          ...section('PRODUCT IMAGES'),
+          ...imageLines(product.frontImage, 'Front view'),
+          ...extraImages.flatMap((src, i) => imageLines(src, `View ${i + 2}`)),
+        ]
+      : [];
+
+  return [
+    ...greeting('I would like to place a new order. Details are below.'),
+    ...productLines,
+    ...imageSection,
     ...deliverySection(delivery),
-    '',
-    'Please confirm availability and payment details. Thank you.',
-    imageUrl ? '(Tap image links above to view product photos.)' : '',
+    ...closing(
+      'Please confirm availability, delivery timeline, and payment details when ready.'
+    ),
   ]
-    .filter(Boolean)
-    .join('\n');
+    .filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -88,39 +150,41 @@ export function buildOrderFollowUpMessage(order: ShopOrder) {
   const payment =
     order.channel === 'paystack'
       ? order.paymentStatus === 'paid'
-        ? 'Paid (Paystack)'
+        ? 'Paid via Paystack'
         : order.paymentStatus === 'failed'
-          ? 'Payment failed'
+          ? 'Payment failed (Paystack)'
           : 'Awaiting Paystack payment'
       : 'WhatsApp checkout';
 
   const itemLines = order.items.flatMap((item, i) => {
     const product = getProductById(item.productId);
-    const img = product?.frontImage ? imageLine(product.frontImage, `   Image`) : [];
-    const color = item.colorPreference ? ` · ${item.colorPreference}` : '';
+    const img = product?.frontImage ? imageLines(product.frontImage, 'Image') : [];
+    const color = item.colorPreference ? `  ·  ${item.colorPreference}` : '';
     return [
-      `${i + 1}. ${item.name} — Size ${item.size} × ${item.quantity} — ${item.price}${color}`,
-      ...img,
+      `${i + 1}. *${item.name}*`,
+      `   Size: ${item.size}  ·  Qty: ${item.quantity}  ·  ${item.price}${color}`,
+      ...img.map((line) => `   ${line}`),
+      '',
     ];
   });
 
   return [
-    'Hello HARV DREAMS, I would like to follow up on my order:',
-    '',
-    `Order: ${order.orderNumber}`,
-    `Date: ${date}`,
+    ...greeting('I would like to follow up on my order.'),
+    ...section('ORDER REFERENCE'),
+    `Order number: ${order.orderNumber}`,
+    `Date placed: ${date}`,
     `Status: ${status}`,
     `Payment: ${payment}`,
-    `Total: ₵${order.totalAmount}`,
+    `Total: ${formatCedis(order.totalAmount)}`,
     '',
-    'Items:',
+    ...section(`ITEMS (${order.items.length})`),
     ...itemLines,
     ...deliverySection(order.shippingAddress),
-    '',
-    'Please advise on delivery or payment. Thank you.',
+    ...closing('Please advise on delivery or payment status at your earliest convenience.'),
   ]
-    .filter(Boolean)
-    .join('\n');
+    .filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 export function buildCartOrderMessage(
@@ -128,25 +192,31 @@ export function buildCartOrderMessage(
   total: number,
   delivery?: DeliveryDetails | null
 ) {
-  const itemBlocks = items.flatMap((item, i) => {
-    const lines = [
-      `${i + 1}. ${item.name} — Size ${item.size} × ${item.quantity} — ${item.price} each`,
-      ...imageLine(item.frontImage, `   Image`),
-    ];
-    return lines;
-  });
+  const itemBlocks = items.flatMap((item, i) => formatCartItem(item, i));
 
   return [
-    'Hello HARV DREAMS, I would like to checkout my order:',
-    '',
-    'Order items & product images:',
-    '',
+    ...greeting('I would like to check out the following order.'),
+    ...section(`ITEMS (${items.length})`),
     ...itemBlocks,
-    '',
-    `Order total: ₵${total}`,
+    ...section('ORDER SUMMARY'),
+    `Total: ${formatCedis(total)}`,
     ...deliverySection(delivery),
+    ...closing(
+      'Please confirm item availability, delivery arrangements, and payment details.'
+    ),
     '',
-    'Please confirm availability, delivery, and payment. Thank you.',
-    '(Tap image links above to view product photos.)',
+    '_Tap image links above to view product photos._',
+  ]
+    .filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+export function buildSupportMessage() {
+  return [
+    ...greeting('I would like assistance with an order or a general enquiry.'),
+    'Please let me know how you can help.',
+    '',
+    'Thank you.',
   ].join('\n');
 }

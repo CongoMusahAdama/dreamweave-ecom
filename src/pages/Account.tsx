@@ -16,7 +16,7 @@ import { apiFetch } from '@/lib/api';
 import { shopProducts } from '@/data/products';
 import type { ShopOrder } from '@/types/customer';
 import { mockShopOrders } from '@/data/mockOrders';
-import { SHOP_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
+import { ACCOUNT_ADMIN_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { cn } from '@/lib/utils';
 
 const SECTION_TITLE: Record<AccountSection, string> = {
@@ -126,9 +126,9 @@ const Account = () => {
     <div className="min-h-screen bg-white overflow-x-hidden">
       <ShopHeader cartCount={cartCount} />
 
-      <main className={cn(SHOP_HEADER_OFFSET_PT, 'pb-28 sm:pb-20', PAGE_X)}>
-        <div className="w-full max-w-6xl mx-auto py-3 sm:py-8">
-          <div className="flex flex-col gap-6 sm:gap-8 lg:flex-row lg:gap-10 xl:gap-14">
+      <main className={cn(ACCOUNT_ADMIN_OFFSET_PT, 'pb-28 sm:pb-20', PAGE_X)}>
+        <div className="w-full max-w-6xl mx-auto py-2 sm:py-4">
+          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:gap-8 xl:gap-10">
             <AccountSidebar
               active={section}
               onSelect={handleSectionChange}

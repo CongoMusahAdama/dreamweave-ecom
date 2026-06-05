@@ -3,28 +3,30 @@ const { body, validationResult } = require('express-validator');
 const ShopOrder = require('../models/ShopOrder');
 const { protect } = require('../middleware/auth');
 const { validateShippingAddress } = require('../utils/validateShippingAddress');
+const {
+  isPaystackConfigured,
+  frontendBaseUrl,
+  paystackRequest,
+  verifyWebhookSignature,
+  verifyTransactionReference,
+} = require('../lib/paystack');
 
 const router = express.Router();
 
-async function paystackRequest(path, options = {}) {
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
-    const err = new Error('Paystack is not configured on the server');
-    err.code = 'PAYSTACK_NOT_CONFIGURED';
-    throw err;
-  }
-
-  const res = await fetch(`https://api.paystack.co${path}`, {
-    method: options.method || 'GET',
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      'Content-Type': 'application/json',
+// @desc    Paystack public config (no secrets)
+// @route   GET /api/payments/config
+// @access  Public
+router.get('/config', (req, res) => {
+  const enabled = isPaystackConfigured();
+  res.status(200).json({
+    success: true,
+    data: {
+      enabled,
+      publicKey: enabled ? process.env.PAYSTACK_PUBLIC_KEY : null,
+      currency: 'GHS',
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
   });
-
-  return res.json();
-}
+});
 
 // @desc    Initialize Paystack payment (logged-in customers)
 // @route   POST /api/payments/initialize
@@ -52,11 +54,11 @@ router.post('/initialize', protect, [
       return res.status(400).json({ success: false, message: addressError });
     }
 
-    const publicKey = process.env.PAYSTACK_PUBLIC_KEY;
-    if (!publicKey) {
+    if (!isPaystackConfigured()) {
       return res.status(503).json({
         success: false,
         message: 'Online card payment is not configured yet. Please use WhatsApp checkout.',
+        code: 'PAYSTACK_NOT_CONFIGURED',
       });
     }
 
@@ -80,13 +82,17 @@ router.post('/initialize', protect, [
       paymentStatus: 'pending',
     });
 
+    const reference = `HD-${order._id}-${Date.now()}`;
+    const callbackUrl = `${frontendBaseUrl()}/payment/callback`;
+
     const paystack = await paystackRequest('/transaction/initialize', {
       method: 'POST',
       body: {
         email: req.user.email,
         amount,
         currency: 'GHS',
-        reference: `HD-${order._id}-${Date.now()}`,
+        reference,
+        callback_url: callbackUrl,
         metadata: {
           orderId: order._id.toString(),
           orderNumber: order.orderNumber,
@@ -110,10 +116,11 @@ router.post('/initialize', protect, [
       success: true,
       data: {
         reference: paystack.data.reference,
-        publicKey,
+        publicKey: process.env.PAYSTACK_PUBLIC_KEY,
         amount,
         orderId: order._id.toString(),
         authorizationUrl: paystack.data.authorization_url,
+        callbackUrl,
       },
     });
   } catch (error) {
@@ -122,7 +129,7 @@ router.post('/initialize', protect, [
       error.code === 'PAYSTACK_NOT_CONFIGURED'
         ? 'Online card payment is not configured yet. Please use WhatsApp checkout.'
         : 'Could not start Paystack payment';
-    res.status(500).json({ success: false, message });
+    res.status(500).json({ success: false, message, code: error.code });
   }
 });
 
@@ -141,9 +148,17 @@ router.get('/verify/:reference', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found for this payment' });
     }
 
-    const paystack = await paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`);
+    if (order.paymentStatus === 'paid') {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: { order },
+      });
+    }
 
-    if (!paystack.status || paystack.data?.status !== 'success') {
+    const result = await verifyTransactionReference(reference);
+
+    if (!result.ok) {
       order.paymentStatus = 'failed';
       await order.save();
       return res.status(400).json({
@@ -152,19 +167,44 @@ router.get('/verify/:reference', protect, async (req, res) => {
       });
     }
 
-    order.paymentStatus = 'paid';
-    order.status = 'confirmed';
-    await order.save();
-
     res.status(200).json({
       success: true,
       message: 'Payment verified',
-      data: { order },
+      data: { order: result.order },
     });
   } catch (error) {
     console.error('Paystack verify error:', error);
-    res.status(500).json({ success: false, message: 'Could not verify payment' });
+    const message =
+      error.code === 'PAYSTACK_NOT_CONFIGURED'
+        ? 'Paystack is not configured on the server'
+        : 'Could not verify payment';
+    res.status(500).json({ success: false, message });
   }
 });
 
+/** Webhook handler — mount with express.raw() in server.js */
+async function paystackWebhookHandler(req, res) {
+  try {
+    const signature = req.headers['x-paystack-signature'];
+    if (!verifyWebhookSignature(req.body, signature)) {
+      return res.status(401).json({ success: false, message: 'Invalid signature' });
+    }
+
+    const event = JSON.parse(req.body.toString());
+
+    if (event.event === 'charge.success') {
+      const reference = event.data?.reference;
+      if (reference) {
+        await verifyTransactionReference(reference);
+      }
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Paystack webhook error:', error);
+    res.status(500).json({ success: false });
+  }
+}
+
 module.exports = router;
+module.exports.paystackWebhookHandler = paystackWebhookHandler;

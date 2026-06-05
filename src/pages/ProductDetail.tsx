@@ -6,7 +6,8 @@ import AuthModal from '@/components/auth/AuthModal';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
-import { getProductById, getCategoryLabel } from '@/data/products';
+import { getCategoryLabel } from '@/data/products';
+import { useShopCatalog } from '@/contexts/ShopCatalogContext';
 import { getProductGalleryImages, galleryImageLabel } from '@/lib/product-images';
 import ProductImageFlip from '@/components/shop/ProductImageFlip';
 import { useCart } from '@/contexts/CartContext';
@@ -36,6 +37,7 @@ const emptyDelivery = (): DeliveryDetails => ({
 const ProductDetail = () => {
   const { id } = useParams();
   const productId = Number(id);
+  const { getProductById, loading: catalogLoading } = useShopCatalog();
   const product = getProductById(productId);
   const { cartCount } = useCart();
   const { login, user, isAuthenticated } = useAuth();
@@ -65,6 +67,16 @@ const ProductDetail = () => {
     const fromUser = getDeliveryFromUser(user);
     if (fromUser) setDelivery(fromUser);
   }, [user]);
+
+  if (catalogLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/40 animate-pulse">
+          Loading product…
+        </p>
+      </div>
+    );
+  }
 
   if (!product) {
     return <Navigate to="/products" replace />;
@@ -176,24 +188,21 @@ const ProductDetail = () => {
           </Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_minmax(280px,1fr)] gap-4 sm:gap-5 lg:gap-6 lg:items-start">
-            <div className="w-full min-w-0 max-w-[320px] sm:max-w-[360px] lg:max-w-none mx-auto lg:mx-0">
-              <div
-                className={cn(
-                  'relative overflow-hidden bg-[#f5f5f5] border border-black/5',
-                  'w-full aspect-[4/5] max-h-[min(72vw,360px)] sm:max-h-[380px]',
-                  'lg:max-h-[300px] lg:aspect-square'
-                )}
-              >
+            <div className="w-full min-w-0 lg:max-w-none">
+              <div className="relative w-full">
                 {!isSoldOut && (
-                  <div className="absolute top-2.5 right-2.5 z-10">
+                  <div className="absolute top-1 right-1 z-10">
                     <WishlistButton productId={product.id} />
                   </div>
                 )}
                 <ProductImageFlip
                   images={images}
                   alt={product.name}
-                  className="absolute inset-0 p-4 sm:p-5"
-                  imageClassName="animate-product-image-in"
+                  className="w-full"
+                  imageClassName={cn(
+                    'w-full h-auto max-h-[min(88vw,520px)] sm:max-h-[560px] lg:max-h-[440px]',
+                    'object-contain animate-product-image-in'
+                  )}
                   index={selectedImage}
                   onIndexChange={setSelectedImage}
                   showControls={false}

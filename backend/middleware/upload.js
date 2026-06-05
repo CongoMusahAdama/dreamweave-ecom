@@ -1,5 +1,12 @@
+const fs = require('fs');
+const path = require('path');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+
+const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 // Configure Cloudinary
 cloudinary.config({
@@ -11,7 +18,7 @@ cloudinary.config({
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    cb(null, UPLOAD_DIR);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

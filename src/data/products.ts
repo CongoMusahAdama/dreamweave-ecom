@@ -1,6 +1,11 @@
+import { getMergedShopProducts, resolveProductById } from '@/lib/shop-catalog';
+
 export interface ShopProduct {
 
   id: number;
+
+  /** Set when product comes from admin MongoDB catalog */
+  mongoId?: string;
 
   name: string;
 
@@ -481,17 +486,13 @@ export const shopProducts: ShopProduct[] = [
 /** Newest products first (by id), up to `limit` */
 
 export function getLatestProducts(limit = 16): ShopProduct[] {
-
-  return [...shopProducts].sort((a, b) => b.id - a.id).slice(0, limit);
-
+  return [...getMergedShopProducts()].sort((a, b) => b.id - a.id).slice(0, limit);
 }
 
 
 
 export function getProductById(id: number): ShopProduct | undefined {
-
-  return shopProducts.find((p) => p.id === id);
-
+  return resolveProductById(id) ?? shopProducts.find((p) => p.id === id);
 }
 
 

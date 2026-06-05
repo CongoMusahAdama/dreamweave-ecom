@@ -1,37 +1,81 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminPanel from '../components/ui/AdminPanel';
+import AdminProductsTable from '../components/products/AdminProductsTable';
+import ProductImagePicker, {
+  type ProductImageEntry,
+} from '../components/products/ProductImagePicker';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminConfirm } from '@/admin/contexts/AdminConfirmContext';
 import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
+import { productImageUrl } from '../lib/productImage';
 import type { MongoProduct } from '../types/admin';
-import { formatGhs } from '../lib/format';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = ['hoodies', 'tees', 'jerseys', 'caps', 'accessories'] as const;
 const FILTER_CATS = ['all', ...CATEGORIES] as const;
 
-const emptyForm = {
+type FormState = {
+  name: string;
+  description: string;
+  price: string;
+  discount: string;
+  category: string;
+  stock: string;
+  outOfStock: boolean;
+};
+
+const emptyForm: FormState = {
   name: '',
   description: '',
   price: '',
+  discount: '',
   category: 'tees',
   stock: '0',
+  outOfStock: false,
 };
 
-const Products = () => {
+function discountFromProduct(product: MongoProduct) {
+  if (!product.originalPrice || product.originalPrice <= product.price) return '';
+  return String(
+    Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  );
+}
+
+function productToForm(product: MongoProduct): FormState {
+  const soldOut = Boolean(product.soldOut || product.stock <= 0);
+  return {
+    name: product.name,
+    description: product.description || '',
+    price: String(product.price),
+    discount: discountFromProduct(product),
+    category: product.category,
+    stock: soldOut ? '0' : String(product.stock),
+    outOfStock: soldOut,
+  };
+}
+
+type ProductsContentProps = {
+  onProductCount: (count: number) => void;
+};
+
+const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
   const { token } = useAuth();
+  const { confirm } = useAdminConfirm();
   const [products, setProducts] = useState<MongoProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string>('all');
   const [total, setTotal] = useState(0);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<'idle' | 'add' | 'edit'>('idle');
+  const [editingProduct, setEditingProduct] = useState<MongoProduct | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [productImages, setProductImages] = useState<ProductImageEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const loadProducts = useCallback(async () => {
@@ -49,76 +93,197 @@ const Products = () => {
 
       setProducts(res.data.products);
       setTotal(res.data.pagination.total);
+      onProductCount(res.data.pagination.total);
     } catch {
       setProducts([]);
       setTotal(0);
+      onProductCount(0);
     } finally {
       setLoading(false);
     }
-  }, [token, category, search]);
+  }, [token, category, search, onProductCount]);
 
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
 
+  const resetForm = () => {
+    productImages.forEach((img) => URL.revokeObjectURL(img.preview));
+    setForm(emptyForm);
+    setProductImages([]);
+    setEditingProduct(null);
+    setError('');
+    setMode('idle');
+  };
+
+  const openAdd = () => {
+    resetForm();
+    setMode('add');
+  };
+
+  const openEdit = (product: MongoProduct) => {
+    productImages.forEach((img) => URL.revokeObjectURL(img.preview));
+    setProductImages([]);
+    setEditingProduct(product);
+    setForm(productToForm(product));
+    setError('');
+    setMode('edit');
+  };
+
+  const appendFormFields = (fd: FormData) => {
+    fd.append('name', form.name.trim());
+    fd.append('description', form.description.trim());
+    fd.append('price', form.price);
+    fd.append('category', form.category);
+    fd.append('stock', form.outOfStock ? '0' : form.stock);
+    fd.append('soldOut', form.outOfStock ? 'true' : 'false');
+    if (form.discount.trim()) fd.append('discount', form.discount.trim());
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !imageFile) {
-      setError('Name, description, price, category, stock, and image are required');
+    if (!token) return;
+
+    if (!form.name.trim() || !form.description.trim() || !form.price) {
+      setError('Name, description, and price are required');
       return;
     }
+
+    if (mode === 'add' && productImages.length === 0) {
+      setError('At least one image is required for new products');
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
       const fd = new FormData();
-      fd.append('name', form.name.trim());
-      fd.append('description', form.description.trim());
-      fd.append('price', form.price);
-      fd.append('category', form.category);
-      fd.append('stock', form.stock);
-      fd.append('image', imageFile);
+      appendFormFields(fd);
 
-      await apiFormFetch('/api/products', fd, { token });
-      setForm(emptyForm);
-      setImageFile(null);
-      setShowForm(false);
+      if (productImages.length) {
+        productImages.forEach((img) => fd.append('images', img.file));
+        fd.append('imageRoles', JSON.stringify(productImages.map((img) => img.role)));
+      }
+
+      if (mode === 'edit' && editingProduct) {
+        await apiFormFetch(`/api/products/${editingProduct._id}`, fd, {
+          method: 'PUT',
+          token,
+        });
+      } else {
+        await apiFormFetch('/api/products', fd, { token });
+      }
+
+      resetForm();
       loadProducts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add product');
+      setError(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!token || !window.confirm(`Remove "${name}" from catalog?`)) return;
+    if (!token) return;
+    const ok = await confirm({
+      title: 'Remove product?',
+      message: `"${name}" will be permanently removed from the catalog. This cannot be undone.`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Keep product',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/api/products/${id}`, { method: 'DELETE', token });
+      if (editingProduct?._id === id) resetForm();
       loadProducts();
     } catch {
       /* ignore */
     }
   };
 
+  const patchInventory = async (productId: string, body: { soldOut?: boolean; stock?: number }) => {
+    if (!token) return;
+    setUpdatingId(productId);
+    try {
+      await apiFetch(`/api/products/${productId}/inventory`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(body),
+      });
+      await loadProducts();
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleToggleSoldOut = async (product: MongoProduct, soldOut: boolean) => {
+    const ok = await confirm({
+      title: soldOut ? 'Mark out of stock?' : 'Restock product?',
+      message: soldOut
+        ? `"${product.name}" will be marked sold out and stock will be set to 0.`
+        : `"${product.name}" will be marked as available again with updated stock.`,
+      confirmLabel: soldOut ? 'Mark sold out' : 'Restock',
+      cancelLabel: 'Cancel',
+      variant: soldOut ? 'danger' : 'default',
+    });
+    if (!ok) return;
+
+    if (soldOut) {
+      void patchInventory(product._id, { soldOut: true });
+      return;
+    }
+    void patchInventory(product._id, { soldOut: false, stock: Math.max(product.stock, 1) });
+  };
+
+  const handleMarkSoldOut = async (product: MongoProduct) => {
+    const ok = await confirm({
+      title: 'Confirm sold out?',
+      message: `"${product.name}" will be marked as sold out and stock will be reduced to 0.`,
+      confirmLabel: 'Mark sold out',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    void patchInventory(product._id, { soldOut: true });
+  };
+
+  const existingImages: { label: string; src: string }[] = [];
+  if (editingProduct?.images?.front) {
+    existingImages.push({
+      label: 'Front',
+      src: productImageUrl(editingProduct.images.front),
+    });
+  }
+  if (
+    editingProduct?.images?.back &&
+    editingProduct.images.back !== editingProduct.images.front
+  ) {
+    existingImages.push({
+      label: 'Back',
+      src: productImageUrl(editingProduct.images.back),
+    });
+  }
+
   return (
-    <AdminLayout productCount={total}>
+    <>
       <AdminPageHeader
         title="Product catalog"
-        description="Add and remove products for the store — name, photo, price, stock."
+        description="Add, edit, and manage inventory — table view with stock and sold-out controls."
       >
         <button
           type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className={ADMIN_BTN_OUTLINE}
+          onClick={() => (mode === 'add' ? resetForm() : openAdd())}
+          className={cn(ADMIN_BTN_OUTLINE, 'w-full sm:w-auto justify-center')}
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
-          {showForm ? 'Cancel' : 'Add product'}
+          {mode === 'add' ? 'Cancel' : 'Add product'}
         </button>
       </AdminPageHeader>
 
-      {showForm && (
-        <AdminPanel title="New product" >
-          <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+      {mode !== 'idle' && (
+        <AdminPanel title={mode === 'edit' ? `Edit — ${editingProduct?.name}` : 'New product'}>
+          <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
             {error && (
               <p className="text-[9px] font-bold uppercase text-red-700 bg-red-50 border border-red-200 px-3 py-2">
                 {error}
@@ -133,6 +298,39 @@ const Products = () => {
                 required
               />
             </label>
+
+            {mode === 'edit' && existingImages.length > 0 && (
+              <div>
+                <span className={ADMIN_LABEL}>Current images</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {existingImages.map((img) => (
+                    <div key={img.label} className="border border-black/15 p-1">
+                      <img
+                        src={img.src}
+                        alt={img.label}
+                        className="w-16 h-16 object-contain bg-white"
+                      />
+                      <p className="text-[8px] font-bold uppercase text-black/40 text-center mt-1">
+                        {img.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[8px] font-bold uppercase text-black/35 mt-2">
+                  Add new images below to replace or extend photos
+                </p>
+              </div>
+            )}
+
+            <ProductImagePicker
+              images={productImages}
+              onChange={setProductImages}
+              maxImages={5}
+            />
+            {mode === 'add' && productImages.length === 0 ? (
+              <p className="text-[8px] font-bold uppercase text-black/40 -mt-2">Required for new products</p>
+            ) : null}
+
             <label className="block">
               <span className={ADMIN_LABEL}>Description *</span>
               <textarea
@@ -143,7 +341,7 @@ const Products = () => {
                 minLength={10}
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <label className="block">
                 <span className={ADMIN_LABEL}>Price (GHS) *</span>
                 <input
@@ -157,17 +355,48 @@ const Products = () => {
                 />
               </label>
               <label className="block">
+                <span className={ADMIN_LABEL}>Discount (%)</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  step="1"
+                  placeholder="Optional"
+                  className={ADMIN_INPUT}
+                  value={form.discount}
+                  onChange={(e) => setForm((f) => ({ ...f, discount: e.target.value }))}
+                />
+              </label>
+              <label className="block">
                 <span className={ADMIN_LABEL}>Stock *</span>
                 <input
                   type="number"
                   min="0"
                   className={ADMIN_INPUT}
                   value={form.stock}
+                  disabled={form.outOfStock}
                   onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                   required
                 />
               </label>
             </div>
+            <label className="flex items-center gap-3 min-h-[48px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.outOfStock}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    outOfStock: e.target.checked,
+                    stock: e.target.checked ? '0' : f.stock === '0' ? '1' : f.stock,
+                  }))
+                }
+                className="h-4 w-4 accent-black"
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-black">
+                Mark as out of stock / sold out
+              </span>
+            </label>
             <label className="block">
               <span className={ADMIN_LABEL}>Category *</span>
               <select
@@ -182,19 +411,16 @@ const Products = () => {
                 ))}
               </select>
             </label>
-            <label className="block">
-              <span className={ADMIN_LABEL}>Product image *</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="text-[10px] font-bold uppercase w-full min-h-[48px]"
-                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                required
-              />
-            </label>
-            <button type="submit" disabled={saving} className={ADMIN_BTN}>
-              {saving ? 'Saving…' : 'Save product'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" disabled={saving} className={ADMIN_BTN}>
+                {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save product'}
+              </button>
+              {mode === 'edit' && (
+                <button type="button" onClick={resetForm} className={ADMIN_BTN_OUTLINE}>
+                  Cancel edit
+                </button>
+              )}
+            </div>
           </form>
         </AdminPanel>
       )}
@@ -207,14 +433,14 @@ const Products = () => {
           placeholder="Search products…"
           className={ADMIN_INPUT}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
           {FILTER_CATS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setCategory(c)}
               className={cn(
-                'px-3 py-2 min-h-[40px] text-[9px] font-bold tracking-[0.12em] uppercase border transition-colors',
+                'shrink-0 px-3 py-2.5 min-h-[44px] text-[9px] font-bold tracking-[0.12em] uppercase border transition-colors touch-manipulation',
                 category === c
                   ? 'bg-black text-white border-black'
                   : 'text-black/50 border-black/15 hover:border-black/30'
@@ -236,44 +462,25 @@ const Products = () => {
           <p className="text-[10px] font-bold text-black/40 mt-2 uppercase">Tap Add product above</p>
         </div>
       ) : (
-        <ul className="border border-black/10 divide-y divide-black/10 bg-white">
-          {products.map((product) => {
-            const img = product.images?.front;
-            return (
-              <li
-                key={product._id}
-                className="flex gap-3 p-4 sm:p-5 items-center"
-              >
-                {img ? (
-                  <img
-                    src={img}
-                    alt=""
-                    className="h-16 w-16 object-cover border border-black/10 shrink-0"
-                  />
-                ) : (
-                  <div className="h-16 w-16 border border-black/10 bg-black/5 shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-black line-clamp-2">
-                    {product.name}
-                  </p>
-                  <p className="text-[9px] font-bold text-black/40 mt-1 uppercase">
-                    {product.category} · {formatGhs(product.price)} · {product.stock} in stock
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(product._id, product.name)}
-                  className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:text-red-700 border border-black/10"
-                  aria-label="Delete product"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <AdminProductsTable
+          products={products}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+          onToggleSoldOut={handleToggleSoldOut}
+          onMarkSoldOut={handleMarkSoldOut}
+          updatingId={updatingId}
+        />
       )}
+    </>
+  );
+};
+
+const Products = () => {
+  const [productCount, setProductCount] = useState(0);
+
+  return (
+    <AdminLayout productCount={productCount}>
+      <ProductsContent onProductCount={setProductCount} />
     </AdminLayout>
   );
 };

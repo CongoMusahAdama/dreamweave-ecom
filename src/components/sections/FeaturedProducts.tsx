@@ -3,13 +3,14 @@ import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { NEW_ARRIVALS_HASH, NEW_ARRIVALS_SECTION_ID } from '@/lib/scroll-to';
 import { HEADER_OFFSET_SCROLL_MT } from '@/lib/page-layout';
-import { shopProducts } from '@/data/products';
+import { useShopCatalog } from '@/contexts/ShopCatalogContext';
 import ProductCard from '@/components/shop/ProductCard';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 
 const DISPLAY_LIMIT = 16;
 
 const FeaturedProducts = () => {
+  const { products: shopProducts } = useShopCatalog();
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('new-arrivals');
 
@@ -33,7 +34,7 @@ const FeaturedProducts = () => {
       return sorted.slice(0, DISPLAY_LIMIT);
     }
     return sorted.filter((p) => p.category === selectedCategory).slice(0, DISPLAY_LIMIT);
-  }, [selectedCategory]);
+  }, [selectedCategory, shopProducts]);
 
   return (
     <section

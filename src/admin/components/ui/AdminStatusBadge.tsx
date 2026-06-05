@@ -1,14 +1,15 @@
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-900 border-amber-200',
-  confirmed: 'bg-sky-50 text-sky-900 border-sky-200',
-  processing: 'bg-blue-50 text-blue-900 border-blue-200',
-  shipped: 'bg-violet-50 text-violet-900 border-violet-200',
-  delivered: 'bg-emerald-50 text-emerald-900 border-emerald-200',
-  cancelled: 'bg-red-50 text-red-900 border-red-200',
-  paid: 'bg-emerald-50 text-emerald-900 border-emerald-200',
-  failed: 'bg-red-50 text-red-900 border-red-200',
+  pending: 'bg-[#f3efe6] text-[#6b5c45] border-[#ddd4c4]',
+  confirmed: 'bg-[#e8edf2] text-[#4a5f6e] border-[#cdd6de]',
+  processing: 'bg-[#e6eaef] text-[#4a5568] border-[#c8d0d9]',
+  shipped: 'bg-[#ebe8f0] text-[#5c5470] border-[#d4cede]',
+  delivered: 'bg-[#e8efe9] text-[#4a5f4f] border-[#cdd8cf]',
+  cancelled: 'bg-[#f0e8e8] text-[#6b4f4f] border-[#ddd0d0]',
+  paid: 'bg-[#e8efe9] text-[#4a5f4f] border-[#cdd8cf]',
+  failed: 'bg-[#f0e8e8] text-[#6b4f4f] border-[#ddd0d0]',
+  whatsapp: 'bg-[#e8ebe6] text-[#4f5a52] border-[#d0d8d2]',
 };
 
 type AdminStatusBadgeProps = {

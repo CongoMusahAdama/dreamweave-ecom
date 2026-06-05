@@ -7,6 +7,8 @@ const { protect, authorize } = require('../middleware/auth');
 const COMPLETED_STATUSES = ['delivered', 'shipped'];
 const PAID_MATCH = { $or: [{ paymentStatus: 'paid' }, { status: { $in: COMPLETED_STATUSES } }] };
 
+const { withNormalizedImages } = require('../lib/imageUrls');
+
 const router = express.Router();
 
 // @desc    Create or reset admin from .env (dev) or first-time setup (prod)
@@ -141,6 +143,32 @@ router.get('/dashboard', async (req, res) => {
       { $limit: 5 },
     ]);
 
+    const trendStart = new Date();
+    trendStart.setDate(trendStart.getDate() - 29);
+    trendStart.setHours(0, 0, 0, 0);
+
+    const revenueTrend = await ShopOrder.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: trendStart },
+          status: { $ne: 'cancelled' },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const orderValueTotal = await ShopOrder.aggregate([
+      { $match: { status: { $ne: 'cancelled' } } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
@@ -150,12 +178,14 @@ router.get('/dashboard', async (req, res) => {
           totalCustomers,
           totalProducts,
           recentSales: monthlyRevenue[0]?.revenue || 0,
-          lowStockProducts: lowStockProducts.length
+          lowStockProducts: lowStockProducts.length,
+          orderValueTotal: orderValueTotal[0]?.total || 0,
         },
         recentOrders,
         lowStockProducts,
         monthlyRevenue,
-        topProducts
+        topProducts,
+        revenueTrend,
       }
     });
   } catch (error) {
@@ -299,7 +329,7 @@ router.get('/products', async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        products,
+        products: products.map(withNormalizedImages),
         pagination: {
           page: pageNum,
           limit: limitNum,

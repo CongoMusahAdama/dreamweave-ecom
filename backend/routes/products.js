@@ -3,7 +3,55 @@ const path = require('path');
 const { body, validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadSingleImage, uploadToCloudinary, deleteImage } = require('../middleware/upload');
+const { uploadSingleImage, uploadMultipleImages, uploadToCloudinary, deleteImage } = require('../middleware/upload');
+const { publicApiBase, withNormalizedImages } = require('../lib/imageUrls');
+
+async function resolveImageUrl(file) {
+  try {
+    const result = await uploadToCloudinary(file.path, 'products');
+    if (result?.secure_url) return result.secure_url;
+  } catch (uploadError) {
+    console.error('Cloudinary upload failed, using local path:', uploadError.message);
+  }
+  return `${publicApiBase()}/uploads/${path.basename(file.path)}`;
+}
+
+async function buildImagesFromUploads(files, rolesInput) {
+  let roles = [];
+  if (rolesInput) {
+    try {
+      roles = JSON.parse(rolesInput);
+    } catch {
+      roles = String(rolesInput).split(',').map((r) => r.trim());
+    }
+  }
+
+  const images = { front: '', back: '', additional: [] };
+  const uploaded = [];
+
+  for (let i = 0; i < files.length; i++) {
+    const url = await resolveImageUrl(files[i]);
+    uploaded.push(url);
+    const role = roles[i] || (i === 0 ? 'front' : 'additional');
+
+    if (role === 'front') {
+      images.front = url;
+    } else if (role === 'back') {
+      images.back = url;
+    } else {
+      images.additional.push(url);
+    }
+  }
+
+  if (!images.front && uploaded.length > 0) {
+    images.front = uploaded[0];
+  }
+  if (!images.back) {
+    images.back = images.front;
+  }
+
+  return images;
+}
 
 const router = express.Router();
 
@@ -57,7 +105,7 @@ router.get('/', async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        products,
+        products: products.map(withNormalizedImages),
         pagination: {
           currentPage: parseInt(page),
           totalPages: Math.ceil(total / limit),
@@ -94,7 +142,7 @@ router.get('/:id', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: { product }
+      data: { product: withNormalizedImages(product) }
     });
   } catch (error) {
     console.error('Get product error:', error);
@@ -108,7 +156,7 @@ router.get('/:id', async (req, res) => {
 // @desc    Create new product
 // @route   POST /api/products
 // @access  Private (Admin only)
-router.post('/', protect, authorize('admin'), uploadSingleImage, [
+router.post('/', protect, authorize('admin'), uploadMultipleImages, [
   body('name')
     .trim()
     .isLength({ min: 2, max: 100 })
@@ -125,7 +173,15 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
     .withMessage('Invalid category'),
   body('stock')
     .isInt({ min: 0 })
-    .withMessage('Stock must be a non-negative integer')
+    .withMessage('Stock must be a non-negative integer'),
+  body('discount')
+    .optional()
+    .isFloat({ min: 0, max: 99 })
+    .withMessage('Discount must be between 0 and 99'),
+  body('originalPrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Original price must be a positive number')
 ], async (req, res) => {
   try {
     // Check for validation errors
@@ -137,43 +193,41 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
       });
     }
 
-    const { name, description, price, category, stock, originalPrice, tags } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles } = req.body;
+    const files = req.files?.length ? req.files : req.file ? [req.file] : [];
 
-    // Handle image upload
-    let frontImage = '';
-    let backImage = '';
-
-    if (req.file) {
-      try {
-        const result = await uploadToCloudinary(req.file.path, 'products');
-        frontImage = result.secure_url;
-      } catch (uploadError) {
-        console.error('Cloudinary upload failed, using local path:', uploadError.message);
-        frontImage = `/uploads/${path.basename(req.file.path)}`;
-      }
-    }
-
-    if (!frontImage) {
+    if (!files.length) {
       return res.status(400).json({
         success: false,
-        message: 'Product image is required',
+        message: 'At least one product image is required',
       });
     }
 
-    backImage = frontImage;
+    const images = await buildImagesFromUploads(files, imageRoles);
+
+    const salePrice = parseFloat(price);
+    let resolvedOriginalPrice = originalPrice ? parseFloat(originalPrice) : undefined;
+
+    if (!resolvedOriginalPrice && discount) {
+      const pct = parseFloat(discount);
+      if (pct > 0 && pct < 100) {
+        resolvedOriginalPrice = Math.round((salePrice / (1 - pct / 100)) * 100) / 100;
+      }
+    }
+
+    if (resolvedOriginalPrice && resolvedOriginalPrice <= salePrice) {
+      resolvedOriginalPrice = undefined;
+    }
 
     // Create product
     const product = await Product.create({
       name,
       description,
-      price: parseFloat(price),
-      originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+      price: salePrice,
+      originalPrice: resolvedOriginalPrice,
       category: category.toLowerCase(),
       stock: parseInt(stock),
-      images: {
-        front: frontImage,
-        back: backImage
-      },
+      images,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       createdBy: req.user.id
     });
@@ -195,7 +249,7 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private (Admin only)
-router.put('/:id', protect, authorize('admin'), uploadSingleImage, [
+router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
   body('name')
     .optional()
     .trim()
@@ -217,10 +271,13 @@ router.put('/:id', protect, authorize('admin'), uploadSingleImage, [
   body('stock')
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Stock must be a non-negative integer')
+    .withMessage('Stock must be a non-negative integer'),
+  body('discount')
+    .optional()
+    .isFloat({ min: 0, max: 99 })
+    .withMessage('Discount must be between 0 and 99'),
 ], async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -237,47 +294,58 @@ router.put('/:id', protect, authorize('admin'), uploadSingleImage, [
       });
     }
 
-    // Handle image upload if new image is provided
-    if (req.file) {
-      try {
-        const result = await uploadToCloudinary(req.file.path, 'products');
-        
-        // Delete old image if it exists
-        if (product.images.front) {
-          try {
-            await deleteImage(product.images.front);
-          } catch (deleteError) {
-            console.error('Error deleting old image:', deleteError);
-          }
-        }
-
-        // Update images
-        product.images.front = result.secure_url;
-        product.images.back = result.secure_url; // For now, using same image
-      } catch (uploadError) {
-        return res.status(400).json({
-          success: false,
-          message: 'Error uploading image'
-        });
+    const files = req.files?.length ? req.files : req.file ? [req.file] : [];
+    if (files.length) {
+      const newImages = await buildImagesFromUploads(files, req.body.imageRoles);
+      if (newImages.front) product.images.front = newImages.front;
+      if (newImages.back) product.images.back = newImages.back;
+      if (newImages.additional?.length) {
+        product.images.additional = [
+          ...(product.images.additional || []),
+          ...newImages.additional,
+        ];
       }
     }
 
-    // Update other fields
-    const updateFields = ['name', 'description', 'price', 'category', 'stock', 'originalPrice', 'tags', 'isActive', 'isFeatured', 'isNewArrival'];
-    
-    updateFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        if (field === 'tags' && req.body[field]) {
-          product[field] = req.body[field].split(',').map(tag => tag.trim());
-        } else if (field === 'price' || field === 'originalPrice') {
-          product[field] = parseFloat(req.body[field]);
-        } else if (field === 'stock') {
-          product[field] = parseInt(req.body[field]);
-        } else {
-          product[field] = req.body[field];
+    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut } = req.body;
+
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (category !== undefined) product.category = category.toLowerCase();
+    if (tags !== undefined) {
+      product.tags = tags ? tags.split(',').map((tag) => tag.trim()) : [];
+    }
+
+    if (price !== undefined) {
+      const salePrice = parseFloat(price);
+      product.price = salePrice;
+
+      let resolvedOriginalPrice = originalPrice ? parseFloat(originalPrice) : undefined;
+      if (!resolvedOriginalPrice && discount) {
+        const pct = parseFloat(discount);
+        if (pct > 0 && pct < 100) {
+          resolvedOriginalPrice = Math.round((salePrice / (1 - pct / 100)) * 100) / 100;
         }
       }
-    });
+      if (resolvedOriginalPrice && resolvedOriginalPrice > salePrice) {
+        product.originalPrice = resolvedOriginalPrice;
+      } else if (discount === '' || discount === '0') {
+        product.originalPrice = undefined;
+      }
+    }
+
+    if (stock !== undefined) {
+      product.stock = parseInt(stock, 10);
+      if (product.stock > 0 && soldOut !== 'true' && soldOut !== true) {
+        product.soldOut = false;
+      }
+    }
+
+    if (soldOut !== undefined) {
+      const isSoldOut = soldOut === true || soldOut === 'true';
+      product.soldOut = isSoldOut;
+      if (isSoldOut) product.stock = 0;
+    }
 
     await product.save();
 
@@ -292,6 +360,50 @@ router.put('/:id', protect, authorize('admin'), uploadSingleImage, [
       success: false,
       message: 'Error updating product'
     });
+  }
+});
+
+// @desc    Quick inventory update (stock / sold out)
+// @route   PATCH /api/products/:id/inventory
+// @access  Private (Admin only)
+router.patch('/:id/inventory', protect, authorize('admin'), [
+  body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be non-negative'),
+  body('soldOut').optional().isBoolean().withMessage('soldOut must be boolean'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const { stock, soldOut } = req.body;
+
+    if (soldOut === true) {
+      product.soldOut = true;
+      product.stock = 0;
+    } else if (soldOut === false) {
+      product.soldOut = false;
+      if (stock !== undefined) product.stock = parseInt(stock, 10);
+    } else if (stock !== undefined) {
+      product.stock = parseInt(stock, 10);
+      if (product.stock > 0) product.soldOut = false;
+    }
+
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: product.soldOut ? 'Product marked as sold out' : 'Inventory updated',
+      data: { product },
+    });
+  } catch (error) {
+    console.error('Inventory update error:', error);
+    res.status(500).json({ success: false, message: 'Error updating inventory' });
   }
 });
 

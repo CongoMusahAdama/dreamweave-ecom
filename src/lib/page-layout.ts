@@ -17,6 +17,10 @@ export const SHOP_HEADER_OFFSET_PT =
 export const PRODUCT_DETAIL_OFFSET_PT =
   'pt-[7rem] sm:pt-[8.5rem] md:pt-[10.5rem] lg:pt-[11.75rem] xl:pt-[12.25rem]';
 
+/** Account & admin — same header, less dead space below nav on desktop */
+export const ACCOUNT_ADMIN_OFFSET_PT =
+  'pt-[7.5rem] sm:pt-[9rem] md:pt-[11rem] lg:pt-[12rem] xl:pt-[12.5rem]';
+
 /** @deprecated use SITE_HEADER_OFFSET_PT */
 export const HEADER_OFFSET_PT = SITE_HEADER_OFFSET_PT;
 
@@ -25,6 +29,10 @@ export const HEADER_OFFSET_SCROLL_MT =
 
 /** Space above fixed bottom bars on mobile (sticky cart CTA, WhatsApp) */
 export const MOBILE_BOTTOM_SAFE = 'pb-28 md:pb-16';
+
+/** Admin mobile bottom tab bar clearance */
+export const ADMIN_MOBILE_BOTTOM_SAFE =
+  'pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-20';
 
 /** Center nav: Shop, Gallery, About — small + bold */
 export const NAV_LINK_BASE =

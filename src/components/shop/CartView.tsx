@@ -25,6 +25,7 @@ const CartView = () => {
     startPaystackCheckout,
     completeWithDelivery,
     paystackLoading,
+    paystackEnabled,
   } = useShopCheckout();
 
   const cartOrderItems = () =>
@@ -207,6 +208,7 @@ const CartView = () => {
           <div className="mt-8 pt-8 border-t border-black/10">
             <CheckoutOptions
               isAuthenticated={isAuthenticated}
+              paystackEnabled={paystackEnabled}
               onWhatsApp={handleWhatsAppCheckout}
               onPaystack={handlePaystackCheckout}
               onSignIn={openSignIn}

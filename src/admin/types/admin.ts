@@ -7,7 +7,15 @@ export interface AdminStats {
   totalProducts: number;
   recentSales: number;
   lowStockProducts: number;
+  /** All non-cancelled order value (incl. pending checkout) */
+  orderValueTotal?: number;
 }
+
+export type RevenueTrendPoint = {
+  _id: string;
+  revenue: number;
+  orders: number;
+};
 
 export type PopulatedCustomer = {
   _id: string;
@@ -25,10 +33,12 @@ export interface MongoProduct {
   name: string;
   description?: string;
   price: number;
+  originalPrice?: number;
   category: string;
   stock: number;
+  soldOut?: boolean;
   isActive?: boolean;
-  images?: { front?: string; back?: string };
+  images?: { front?: string; back?: string; additional?: string[] };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -45,6 +55,7 @@ export interface DashboardPayload {
   stats: AdminStats;
   recentOrders: AdminShopOrder[];
   lowStockProducts: { _id: string; name: string; stock: number; category: string }[];
+  revenueTrend?: RevenueTrendPoint[];
 }
 
 export interface GalleryItem {

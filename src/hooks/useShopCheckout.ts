@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePaystack } from '@/contexts/PaystackContext';
 import { apiFetch } from '@/lib/api';
 import { getDeliveryFromUser, isDeliveryComplete, deliveryToAddressPayload } from '@/lib/delivery';
 import { openPaystackPayment } from '@/lib/paystack';
@@ -18,6 +19,7 @@ type PendingCheckout = {
 
 export function useShopCheckout() {
   const { user, token, isAuthenticated, refreshUser } = useAuth();
+  const { enabled: paystackEnabled } = usePaystack();
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
   const [paystackLoading, setPaystackLoading] = useState(false);
@@ -150,6 +152,14 @@ export function useShopCheckout() {
       message?: string,
       options?: { delivery?: DeliveryDetails | null }
     ): { needsAuth?: true; needsDelivery?: true; missingDelivery?: true; ok?: true } => {
+      if (channel === 'paystack' && !paystackEnabled) {
+        sweetError(
+          'Card payment unavailable',
+          'Paystack is not configured yet. Please checkout on WhatsApp.'
+        );
+        return {};
+      }
+
       if (channel === 'paystack' && !isAuthenticated) {
         return { needsAuth: true };
       }
@@ -218,6 +228,7 @@ export function useShopCheckout() {
     startPaystackCheckout,
     completeWithDelivery,
     paystackLoading,
+    paystackEnabled,
     /** @deprecated use startWhatsAppCheckout */
     startCheckout: startWhatsAppCheckout,
   };

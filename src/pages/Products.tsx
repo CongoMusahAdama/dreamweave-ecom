@@ -6,12 +6,13 @@ import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-import { shopProducts } from '@/data/products';
+import { useShopCatalog } from '@/contexts/ShopCatalogContext';
 import { SHOP_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
 
 const Products = () => {
+  const { products: shopProducts, loading: catalogLoading } = useShopCatalog();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
@@ -57,13 +58,19 @@ const Products = () => {
               </h1>
             </ScrollReveal>
 
+            {catalogLoading ? (
+              <p className="text-center py-16 text-[10px] font-bold tracking-[0.2em] uppercase text-black/40 animate-pulse">
+                Loading collection…
+              </p>
+            ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 sm:gap-x-6 md:gap-x-12 lg:gap-x-16 gap-y-10 sm:gap-y-14 md:gap-y-20 lg:gap-y-24">
               {filteredProducts.map((product, index) => (
                 <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
+            )}
 
-            {filteredProducts.length === 0 && (
+            {!catalogLoading && filteredProducts.length === 0 && (
               <ScrollReveal variant="fade" className="text-center py-16">
                 <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/40">
                   No products found

@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 
 interface CheckoutOptionsProps {
   isAuthenticated: boolean;
+  paystackEnabled?: boolean;
   onWhatsApp: () => void;
   onPaystack?: () => void;
   onSignIn?: () => void;
@@ -15,6 +16,7 @@ interface CheckoutOptionsProps {
 
 const CheckoutOptions = ({
   isAuthenticated,
+  paystackEnabled = false,
   onWhatsApp,
   onPaystack,
   onSignIn,
@@ -24,15 +26,22 @@ const CheckoutOptions = ({
   whatsAppLabel = 'Checkout on WhatsApp',
   className,
 }: CheckoutOptionsProps) => {
+  const showPaystack = isAuthenticated && paystackEnabled && onPaystack;
+
   return (
     <div className={cn('space-y-4', className)}>
-      {isAuthenticated ? (
+      {isAuthenticated && paystackEnabled ? (
         <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black/50 leading-[1.7]">
           Choose how you&apos;d like to pay — WhatsApp or secure card payment via Paystack.
         </p>
       ) : (
         <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black/50 leading-[1.7]">
-          Checkout on WhatsApp — no account needed. Sign in to unlock card payment with Paystack.
+          Checkout on WhatsApp — no account needed.
+          {!paystackEnabled && isAuthenticated
+            ? ' Card payment will be available once Paystack is configured.'
+            : !isAuthenticated
+              ? ' Sign in to unlock card payment with Paystack.'
+              : null}
         </p>
       )}
 
@@ -40,19 +49,19 @@ const CheckoutOptions = ({
         type="button"
         onClick={onWhatsApp}
         disabled={whatsAppDisabled}
-        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white py-3 min-h-[44px] text-[10px] font-bold tracking-[0.2em] uppercase hover:opacity-90 transition-opacity disabled:opacity-40"
+        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white py-3 min-h-[48px] text-[10px] font-bold tracking-[0.2em] uppercase hover:opacity-90 transition-opacity disabled:opacity-40 touch-manipulation"
       >
         <MessageCircle className="w-4 h-4" strokeWidth={2} />
         {whatsAppLabel}
       </button>
 
-      {isAuthenticated && onPaystack && (
+      {showPaystack && (
         <button
           type="button"
           onClick={onPaystack}
           disabled={paystackDisabled || paystackLoading}
           className={cn(
-            'w-full flex items-center justify-center gap-2 py-3 min-h-[44px]',
+            'w-full flex items-center justify-center gap-2 py-3 min-h-[48px] touch-manipulation',
             'text-[10px] font-bold tracking-[0.2em] uppercase transition-colors disabled:opacity-40',
             'bg-[#00C3F7] hover:bg-[#00A8D9] text-[#011B33]'
           )}

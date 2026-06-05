@@ -15,12 +15,18 @@ const customerRoutes = require('./routes/customers');
 const adminRoutes = require('./routes/admin');
 const shopOrderRoutes = require('./routes/shopOrders');
 const paymentRoutes = require('./routes/payments');
+const paystackWebhookHandler = paymentRoutes.paystackWebhookHandler;
+const { isPaystackConfigured } = require('./lib/paystack');
 const galleryRoutes = require('./routes/gallery');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware — allow shop/admin on another origin to load /uploads images
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.RENDER_EXTERNAL_URL,
@@ -55,12 +61,28 @@ app.use('/api/', limiter);
 // Logging middleware
 app.use(morgan('combined'));
 
+// Paystack webhook needs raw body for signature verification
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  paystackWebhookHandler
+);
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static files
-app.use('/uploads', express.static('uploads'));
+// Static files (always serve from backend/uploads regardless of process cwd)
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '7d',
+    setHeaders(res) {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    },
+  })
+);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -116,10 +138,37 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // MongoDB connection
+async function warnIfCloudinaryMisconfigured() {
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.warn('⚠️  Cloudinary env vars missing — product images will use local /uploads (lost on Render redeploy).');
+    return;
+  }
+  try {
+    const cloudinary = require('cloudinary').v2;
+    cloudinary.config({
+      cloud_name: CLOUDINARY_CLOUD_NAME,
+      api_key: CLOUDINARY_API_KEY,
+      api_secret: CLOUDINARY_API_SECRET,
+    });
+    await cloudinary.api.ping();
+    console.log('✅ Cloudinary connected');
+  } catch (err) {
+    const msg = err?.error?.message || err?.message || 'unknown error';
+    console.warn(`⚠️  Cloudinary misconfigured (${msg}). Uploads fall back to /uploads — run npm run migrate:images after fixing CLOUDINARY_CLOUD_NAME.`);
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB');
-    
+    await warnIfCloudinaryMisconfigured();
+    if (isPaystackConfigured()) {
+      console.log('✅ Paystack configured (card checkout enabled)');
+    } else {
+      console.warn('⚠️  Paystack keys missing — add PAYSTACK_PUBLIC_KEY and PAYSTACK_SECRET_KEY to backend/.env');
+    }
+
     // Start server
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {

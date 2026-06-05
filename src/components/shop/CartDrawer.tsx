@@ -23,6 +23,7 @@ const CartDrawer = () => {
     startPaystackCheckout,
     completeWithDelivery,
     paystackLoading,
+    paystackEnabled,
   } = useShopCheckout();
 
   const cartOrderItems = () =>
@@ -131,6 +132,7 @@ const CartDrawer = () => {
 
             <CheckoutOptions
               isAuthenticated={isAuthenticated}
+              paystackEnabled={paystackEnabled}
               onWhatsApp={handleWhatsAppCheckout}
               onPaystack={handlePaystackCheckout}
               onSignIn={() => setAuthOpen(true)}

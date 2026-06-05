@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { productImageUrl } from '@/lib/productImage';
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
@@ -79,7 +80,7 @@ const Gallery = () => {
             res.data.items.map((item, i) => ({
               id: i + 1,
               name: item.name,
-              image: item.image,
+              image: productImageUrl(item.image),
               category: item.category,
               caption: item.caption || '',
             }))
