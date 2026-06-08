@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { DeliveryDetails, DeliveryMethod } from '@/types/customer';
 import { COUNTRIES, PICKUP_STATIONS_GHANA } from '@/lib/countries';
 import { cn } from '@/lib/utils';
@@ -46,30 +46,51 @@ const DeliveryDetailsForm = ({
   loading = false,
   compact = false,
 }: DeliveryDetailsFormProps) => {
-  const [form, setForm] = useState<DeliveryDetails>(emptyForm);
-  const [customPickup, setCustomPickup] = useState(false);
+  const buildFormFromInitial = useCallback((source?: Partial<DeliveryDetails> | null) => {
+    if (!source) return { form: emptyForm, customPickup: false };
+
+    const method = source.deliveryMethod || 'delivery';
+    const station = source.pickupStation || '';
+    const isCustom =
+      method === 'pickup' &&
+      station.length > 0 &&
+      !PICKUP_STATIONS_GHANA.slice(0, -1).some((s) => s === station);
+
+    const form = {
+      ...emptyForm,
+      ...source,
+      deliveryMethod: method,
+      country: source.country || 'Ghana',
+    };
+
+    return {
+      form,
+      customPickup: isCustom || station === 'Other — specify below',
+    };
+  }, []);
+
+  const [form, setForm] = useState<DeliveryDetails>(() => buildFormFromInitial(initial).form);
+  const [customPickup, setCustomPickup] = useState(
+    () => buildFormFromInitial(initial).customPickup
+  );
   const [error, setError] = useState('');
+  const hydratedRef = useRef(false);
 
+  // Hydrate once on mount only — avoid wiping typed fields when parent re-renders
   useEffect(() => {
-    if (initial) {
-      const method = initial.deliveryMethod || 'delivery';
-      const station = initial.pickupStation || '';
-      const isCustom =
-        method === 'pickup' &&
-        station.length > 0 &&
-        !PICKUP_STATIONS_GHANA.slice(0, -1).some((s) => s === station);
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const { form: next, customPickup: nextCustom } = buildFormFromInitial(initial);
+    setForm(next);
+    setCustomPickup(nextCustom);
+    if (embedded && onChange) onChange(next);
+  }, [buildFormFromInitial, initial, embedded, onChange]);
 
-      const next = {
-        ...emptyForm,
-        ...initial,
-        deliveryMethod: method,
-        country: initial.country || 'Ghana',
-      };
-      setForm(next);
-      setCustomPickup(isCustom || station === 'Other — specify below');
-      if (embedded && onChange) onChange(next);
-    }
-  }, [initial, embedded, onChange]);
+  const scrollFieldIntoView = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    requestAnimationFrame(() => {
+      e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  };
 
   const isGhana = form.country === 'Ghana';
   const isPickup = form.deliveryMethod === 'pickup';
@@ -192,6 +213,8 @@ const DeliveryDetailsForm = ({
           name="fullName"
           value={form.fullName}
           onChange={handleChange}
+          onFocus={scrollFieldIntoView}
+          autoComplete="name"
           className={inputCls}
           required
         />
@@ -207,6 +230,9 @@ const DeliveryDetailsForm = ({
           type="tel"
           value={form.phone}
           onChange={handleChange}
+          onFocus={scrollFieldIntoView}
+          autoComplete="tel"
+          inputMode="tel"
           className={inputCls}
           required
         />
@@ -294,6 +320,8 @@ const DeliveryDetailsForm = ({
             name="street"
             value={form.street}
             onChange={handleChange}
+            onFocus={scrollFieldIntoView}
+            autoComplete="street-address"
             className={inputCls}
             required
           />
@@ -310,6 +338,8 @@ const DeliveryDetailsForm = ({
             name="city"
             value={form.city}
             onChange={handleChange}
+            onFocus={scrollFieldIntoView}
+            autoComplete="address-level2"
             className={inputCls}
             required
           />
@@ -323,6 +353,9 @@ const DeliveryDetailsForm = ({
             name="region"
             value={form.region}
             onChange={handleChange}
+            onFocus={scrollFieldIntoView}
+            autoComplete="address-level1"
+            autoCapitalize="words"
             className={inputCls}
             required
           />

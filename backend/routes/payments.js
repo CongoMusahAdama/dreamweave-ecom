@@ -12,9 +12,8 @@ const {
 } = require('../lib/paystack');
 const {
   queueAdminNewOrder,
-  queueAdminPaymentReceived,
-  queueCustomerStatusChange,
 } = require('../lib/orderNotifications');
+const { validateOrderItems, totalsMatch } = require('../lib/orderPricing');
 
 const router = express.Router();
 
@@ -68,7 +67,19 @@ router.post('/initialize', protect, [
     }
 
     const { items, shippingAddress, totalAmount } = req.body;
-    const amount = Math.round(Number(totalAmount) * 100);
+
+    const pricing = await validateOrderItems(items);
+    if (!pricing.ok) {
+      return res.status(400).json({ success: false, message: pricing.message });
+    }
+    if (!totalsMatch(pricing.totalAmount, totalAmount)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order total does not match product prices. Please refresh and try again.',
+      });
+    }
+
+    const amount = Math.round(pricing.totalAmount * 100);
 
     if (amount < 100) {
       return res.status(400).json({
@@ -79,9 +90,9 @@ router.post('/initialize', protect, [
 
     const order = await ShopOrder.create({
       customer: req.user.id,
-      items,
+      items: pricing.items,
       shippingAddress,
-      totalAmount: Number(totalAmount),
+      totalAmount: pricing.totalAmount,
       channel: 'paystack',
       status: 'pending',
       paymentStatus: 'pending',
@@ -176,7 +187,7 @@ router.get('/verify/:reference', protect, async (req, res) => {
       await order.save();
       return res.status(400).json({
         success: false,
-        message: 'Payment was not successful',
+        message: result.message || 'Payment was not successful',
       });
     }
 

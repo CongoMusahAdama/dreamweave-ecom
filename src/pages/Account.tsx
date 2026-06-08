@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import ShopHeader from '@/components/navigation/ShopHeader';
 import Footer from '@/components/layout/Footer';
@@ -25,6 +25,7 @@ import {
   orderStatusMessage,
 } from '@/lib/order-status';
 import { sweetInfo } from '@/lib/sweet-alert';
+import { useOrderPolling } from '@/hooks/useOrderPolling';
 
 const ORDERS_POLL_MS = 20_000;
 
@@ -59,7 +60,10 @@ const Account = () => {
   );
   const ordersBootstrappedRef = useRef(false);
 
-  const wishlistProducts = catalogProducts.filter((p) => user?.wishlist?.includes(p.id));
+  const wishlistProducts = useMemo(
+    () => catalogProducts.filter((p) => user?.wishlist?.includes(p.id)),
+    [catalogProducts, user?.wishlist]
+  );
 
   const loadOrders = useCallback(
     async (page = 1, options?: { notify?: boolean; silent?: boolean }) => {
@@ -140,26 +144,22 @@ const Account = () => {
   }, [token]);
 
   useEffect(() => {
-    loadOrders(ordersPage);
-  }, [loadOrders, ordersPage]);
+    if (section === 'orders') {
+      loadOrders(ordersPage);
+    }
+  }, [loadOrders, ordersPage, section]);
 
-  useEffect(() => {
-    if (section !== 'orders' || !token) return;
-    const id = window.setInterval(() => {
-      void loadOrders(ordersPage, { notify: true, silent: true });
-    }, ORDERS_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [section, ordersPage, loadOrders, token]);
+  const pollOrders = useCallback(
+    (options: { notify: boolean; silent: boolean }) => loadOrders(ordersPage, options),
+    [loadOrders, ordersPage]
+  );
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && section === 'orders' && token) {
-        void loadOrders(ordersPage, { notify: true, silent: true });
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [section, ordersPage, loadOrders, token]);
+  useOrderPolling({
+    enabled: section === 'orders',
+    intervalMs: ORDERS_POLL_MS,
+    token,
+    onPoll: pollOrders,
+  });
 
   useEffect(() => {
     const onPaid = () => {

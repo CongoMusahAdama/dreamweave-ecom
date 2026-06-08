@@ -1,36 +1,13 @@
 const express = require('express');
-const path = require('path');
 const { body, validationResult } = require('express-validator');
 const GalleryItem = require('../models/GalleryItem');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadSingleImage, uploadToCloudinary } = require('../middleware/upload');
-const { uploadsPublicBase, normalizeStoredImageUrl } = require('../lib/imageUrls');
-const { isCloudinaryReady } = require('../lib/cloudinaryClient');
+const { uploadSingleImage } = require('../middleware/upload');
+const { normalizeStoredImageUrl } = require('../lib/imageUrls');
+const { resolveUploadedImageUrl } = require('../lib/uploadImage');
+const { deleteCloudinaryUrl } = require('../lib/cloudinaryAssets');
 
 const router = express.Router();
-
-async function resolveImageUrl(file) {
-  if (!file) return '';
-  const ready = await isCloudinaryReady();
-  if (ready) {
-    try {
-      const result = await uploadToCloudinary(file.path, 'gallery');
-      if (result?.secure_url) return result.secure_url;
-    } catch (err) {
-      console.error('Gallery Cloudinary upload failed:', err.message);
-      throw new Error('Image upload failed — check Cloudinary settings on Render.');
-    }
-    throw new Error('Image upload failed — Cloudinary returned no URL.');
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'Image upload failed — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Render.'
-    );
-  }
-
-  return `${uploadsPublicBase()}/uploads/${path.basename(file.path)}`;
-}
 
 // @desc    List gallery images (public)
 // @route   GET /api/gallery
@@ -67,7 +44,7 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
       return res.status(400).json({ success: false, message: errors.array()[0].msg });
     }
 
-    const imageUrl = await resolveImageUrl(req.file);
+    const imageUrl = await resolveUploadedImageUrl(req.file, 'gallery');
     if (!imageUrl) {
       return res.status(400).json({ success: false, message: 'Image is required' });
     }
@@ -90,10 +67,16 @@ router.post('/', protect, authorize('admin'), uploadSingleImage, [
 // @route   DELETE /api/gallery/:id
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const item = await GalleryItem.findByIdAndDelete(req.params.id);
+    const item = await GalleryItem.findById(req.params.id);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Image not found' });
     }
+
+    if (item.image) {
+      await deleteCloudinaryUrl(item.image);
+    }
+
+    await GalleryItem.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: 'Gallery image removed' });
   } catch (error) {
     console.error('Gallery delete error:', error);

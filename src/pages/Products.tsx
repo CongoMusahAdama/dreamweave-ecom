@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ShopHeader from '@/components/navigation/ShopHeader';
 import ProductCard from '@/components/shop/ProductCard';
@@ -29,7 +29,7 @@ const Products = () => {
     }
   }, [categoryParam, categories]);
 
-  const filteredProducts = (() => {
+  const filteredProducts = useMemo(() => {
     const matched = shopProducts.filter((product) => {
       const categoryMatch = selectedCategory === 'all' || product.category === selectedCategory;
       const searchMatch =
@@ -43,7 +43,7 @@ const Products = () => {
     if (searchQuery) return matched;
 
     return sortShopProductsNewestFirst(matched);
-  })();
+  }, [shopProducts, selectedCategory, searchQuery]);
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">

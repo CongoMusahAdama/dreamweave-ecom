@@ -51,19 +51,26 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('harv:catalog-changed', onCatalogChange);
   }, [refresh]);
 
+  const isShopRoute =
+    location.pathname === '/' ||
+    location.pathname === '/products' ||
+    location.pathname.startsWith('/products/');
+
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
+      if (document.visibilityState === 'visible' && isShopRoute) {
+        void refresh();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [refresh]);
+  }, [refresh, isShopRoute]);
 
   useEffect(() => {
-    if (location.pathname === '/' || location.pathname === '/products') {
+    if (isShopRoute) {
       void refresh();
     }
-  }, [location.pathname, refresh]);
+  }, [location.pathname, refresh, isShopRoute]);
 
   const products = useMemo(() => getMergedShopProducts(), [apiLoaded, loading]);
 

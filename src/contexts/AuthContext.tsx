@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+  useMemo,
+} from 'react';
 import { apiFetch } from '@/lib/api';
 import type { AuthUser } from '@/types/customer';
 
@@ -100,32 +108,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [syncUserFromApi]
   );
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('harv_dreams_token');
     localStorage.removeItem('harv_dreams_user');
-  };
+  }, []);
 
-  const updateUser = (userData: Partial<AuthUser>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
+  const updateUser = useCallback((userData: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updatedUser = { ...prev, ...userData };
       localStorage.setItem('harv_dreams_user', JSON.stringify(updatedUser));
-    }
-  };
+      return updatedUser;
+    });
+  }, []);
 
-  const value: AuthContextType = {
-    user,
-    token,
-    loading,
-    login,
-    logout,
-    updateUser,
-    refreshUser,
-    isAuthenticated: !!token && !!user,
-    isAdmin: user?.role === 'admin',
-  };
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      token,
+      loading,
+      login,
+      logout,
+      updateUser,
+      refreshUser,
+      isAuthenticated: !!token && !!user,
+      isAdmin: user?.role === 'admin',
+    }),
+    [user, token, loading, login, logout, updateUser, refreshUser]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

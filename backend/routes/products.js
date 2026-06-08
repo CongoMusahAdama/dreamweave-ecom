@@ -3,32 +3,14 @@ const path = require('path');
 const { body, validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadSingleImage, uploadMultipleImages, uploadToCloudinary, deleteImage } = require('../middleware/upload');
-const { uploadsPublicBase, withNormalizedImages } = require('../lib/imageUrls');
-const { isCloudinaryReady } = require('../lib/cloudinaryClient');
+const { uploadMultipleImages } = require('../middleware/upload');
+const { withNormalizedImages } = require('../lib/imageUrls');
 const { isValidCategorySlug } = require('../lib/categories');
+const { resolveUploadedImageUrl } = require('../lib/uploadImage');
+const { deleteCloudinaryUrls, collectProductImageUrls } = require('../lib/cloudinaryAssets');
+const { MAX_PRODUCT_PAGE_LIMIT } = require('../lib/constants');
 
-async function resolveImageUrl(file) {
-  const ready = await isCloudinaryReady();
-  if (ready) {
-    try {
-      const result = await uploadToCloudinary(file.path, 'products');
-      if (result?.secure_url) return result.secure_url;
-    } catch (uploadError) {
-      console.error('Cloudinary upload failed:', uploadError.message);
-      throw new Error('Image upload failed — check Cloudinary settings on Render.');
-    }
-    throw new Error('Image upload failed — Cloudinary returned no URL.');
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'Image upload failed — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Render.'
-    );
-  }
-
-  return `${uploadsPublicBase()}/uploads/${path.basename(file.path)}`;
-}
+const ALLOWED_SORT_FIELDS = new Set(['createdAt', 'price', 'name', 'stock']);
 
 async function buildImagesFromUploads(files, rolesInput) {
   let roles = [];
@@ -43,8 +25,10 @@ async function buildImagesFromUploads(files, rolesInput) {
   const images = { front: '', back: '', additional: [] };
   const uploaded = [];
 
+  const urls = await Promise.all(files.map((file) => resolveUploadedImageUrl(file, 'products')));
+
   for (let i = 0; i < files.length; i++) {
-    const url = await resolveImageUrl(files[i]);
+    const url = urls[i];
     uploaded.push(url);
     const role = roles[i] || (i === 0 ? 'front' : 'additional');
 
@@ -125,15 +109,15 @@ router.get('/', async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    // Build sort object
-    const sortObj = {};
-    sortObj[sort] = order === 'desc' ? -1 : 1;
+    const sortField = ALLOWED_SORT_FIELDS.has(String(sort)) ? String(sort) : 'createdAt';
+    const sortObj = { [sortField]: order === 'desc' ? -1 : 1 };
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(MAX_PRODUCT_PAGE_LIMIT, Math.max(1, parseInt(limit, 10) || 12));
 
-    // Execute query
     const products = await Product.find(query)
       .sort(sortObj)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
       .populate('createdBy', 'name');
 
     // Get total count
@@ -144,11 +128,11 @@ router.get('/', async (req, res) => {
       data: {
         products: products.map(withNormalizedImages),
         pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / limitNum),
           totalProducts: total,
-          hasNextPage: page * limit < total,
-          hasPrevPage: page > 1
+          hasNextPage: pageNum * limitNum < total,
+          hasPrevPage: pageNum > 1
         }
       }
     });
@@ -157,6 +141,47 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching products'
+    });
+  }
+});
+
+// @desc    Get featured products
+// @route   GET /api/products/featured
+// @access  Public
+router.get('/featured', async (req, res) => {
+  try {
+    const products = await Product.getFeatured();
+
+    res.status(200).json({
+      success: true,
+      data: { products: products.map(withNormalizedImages) },
+    });
+  } catch (error) {
+    console.error('Get featured products error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching featured products',
+    });
+  }
+});
+
+// @desc    Get new arrivals
+// @route   GET /api/products/new-arrivals
+// @access  Public
+router.get('/new-arrivals', async (req, res) => {
+  try {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const products = await Product.getNewArrivals(limit);
+
+    res.status(200).json({
+      success: true,
+      data: { products: products.map(withNormalizedImages) },
+    });
+  } catch (error) {
+    console.error('Get new arrivals error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching new arrivals',
     });
   }
 });
@@ -497,15 +522,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       });
     }
 
-    // Delete images from Cloudinary
-    if (product.images.front) {
-      try {
-        await deleteImage(product.images.front);
-      } catch (deleteError) {
-        console.error('Error deleting image:', deleteError);
-      }
-    }
-
+    await deleteCloudinaryUrls(collectProductImageUrls(product.images));
     await Product.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -577,47 +594,6 @@ router.post('/:id/reviews', protect, [
     res.status(500).json({
       success: false,
       message: 'Error adding review'
-    });
-  }
-});
-
-// @desc    Get featured products
-// @route   GET /api/products/featured
-// @access  Public
-router.get('/featured', async (req, res) => {
-  try {
-    const products = await Product.getFeatured();
-    
-    res.status(200).json({
-      success: true,
-      data: { products }
-    });
-  } catch (error) {
-    console.error('Get featured products error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching featured products'
-    });
-  }
-});
-
-// @desc    Get new arrivals
-// @route   GET /api/products/new-arrivals
-// @access  Public
-router.get('/new-arrivals', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const products = await Product.getNewArrivals(limit);
-    
-    res.status(200).json({
-      success: true,
-      data: { products }
-    });
-  } catch (error) {
-    console.error('Get new arrivals error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching new arrivals'
     });
   }
 });

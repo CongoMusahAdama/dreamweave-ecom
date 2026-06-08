@@ -71,8 +71,18 @@ async function verifyTransactionReference(reference) {
   if (!paystack.status || paystack.data?.status !== 'success') {
     return { ok: false, paystack };
   }
-  const order = await markOrderPaidByReference(reference);
-  return { ok: true, order, paystack };
+
+  const order = await ShopOrder.findOne({ paystackReference: reference });
+  if (order) {
+    const expectedKobo = Math.round(Number(order.totalAmount) * 100);
+    const paidKobo = Number(paystack.data?.amount);
+    if (Number.isFinite(expectedKobo) && Number.isFinite(paidKobo) && paidKobo !== expectedKobo) {
+      return { ok: false, paystack, message: 'Payment amount does not match order total' };
+    }
+  }
+
+  const paidOrder = await markOrderPaidByReference(reference);
+  return { ok: true, order: paidOrder, paystack };
 }
 
 module.exports = {

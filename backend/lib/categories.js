@@ -36,10 +36,27 @@ async function ensureDefaultCategories() {
   }
 }
 
+let activeSlugCache = null;
+let activeSlugCacheAt = 0;
+const SLUG_CACHE_MS = 5 * 60 * 1000;
+
+async function refreshActiveSlugCache() {
+  const cats = await Category.find({ isActive: true }).select('slug');
+  activeSlugCache = new Set(cats.map((c) => c.slug));
+  activeSlugCacheAt = Date.now();
+}
+
+function invalidateCategoryCache() {
+  activeSlugCache = null;
+  activeSlugCacheAt = 0;
+}
+
 async function isValidCategorySlug(slug) {
   if (!slug) return false;
-  const doc = await Category.findOne({ slug: slug.toLowerCase(), isActive: true });
-  return Boolean(doc);
+  if (!activeSlugCache || Date.now() - activeSlugCacheAt > SLUG_CACHE_MS) {
+    await refreshActiveSlugCache();
+  }
+  return activeSlugCache.has(String(slug).toLowerCase());
 }
 
 async function listActiveCategories() {
@@ -53,4 +70,5 @@ module.exports = {
   ensureDefaultCategories,
   isValidCategorySlug,
   listActiveCategories,
+  invalidateCategoryCache,
 };

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const shopOrderItemSchema = new mongoose.Schema({
   productId: { type: Number, required: true },
+  mongoProductId: { type: String, trim: true },
   name: { type: String, required: true },
   size: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
@@ -78,6 +79,11 @@ const shopOrderSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+shopOrderSchema.index({ customer: 1, createdAt: -1 });
+shopOrderSchema.index({ status: 1, createdAt: -1 });
+shopOrderSchema.index({ paystackReference: 1 });
+shopOrderSchema.index({ orderNumber: 1 });
 
 shopOrderSchema.pre('validate', function generateOrderNumber(next) {
   if (!this.orderNumber) {

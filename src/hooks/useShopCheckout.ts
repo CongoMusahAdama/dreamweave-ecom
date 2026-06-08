@@ -139,7 +139,7 @@ export function useShopCheckout() {
     (inline?: DeliveryDetails | null) => {
       if (inline && isDeliveryComplete(inline)) return inline;
       if (isAuthenticated) return getDeliveryFromUser(user);
-      return inline && isDeliveryComplete(inline) ? inline : null;
+      return null;
     },
     [isAuthenticated, user]
   );
@@ -215,7 +215,7 @@ export function useShopCheckout() {
         body: JSON.stringify(deliveryToAddressPayload(delivery)),
       });
       await refreshUser();
-      await completePending();
+      await completePending(delivery);
     },
     [token, refreshUser, completePending]
   );

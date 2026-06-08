@@ -8,6 +8,7 @@ const COMPLETED_STATUSES = ['delivered', 'shipped'];
 const PAID_MATCH = { $or: [{ paymentStatus: 'paid' }, { status: { $in: COMPLETED_STATUSES } }] };
 
 const { withNormalizedImages } = require('../lib/imageUrls');
+const { escapeRegex } = require('../lib/regex');
 
 const router = express.Router();
 
@@ -16,6 +17,13 @@ const router = express.Router();
 // @access  Public (must stay above admin auth middleware)
 router.post('/setup', async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_ADMIN_SETUP !== 'true') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin setup is disabled in production. Set ALLOW_ADMIN_SETUP=true to enable first-time setup.',
+      });
+    }
+
     const email = (req.body.email || process.env.ADMIN_EMAIL || 'admin@harvdreams.com')
       .trim()
       .toLowerCase();
@@ -95,78 +103,85 @@ router.use(protect, authorize('admin'));
 // @access  Private (Admin only)
 router.get('/dashboard', async (req, res) => {
   try {
-    const totalProducts = await Product.countDocuments();
-    const totalOrders = await ShopOrder.countDocuments();
-    const totalCustomers = await User.countDocuments({ role: 'customer' });
-
-    const totalSales = await ShopOrder.aggregate([
-      { $match: PAID_MATCH },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-    ]);
-
-    const recentOrders = await ShopOrder.find()
-      .populate('customer', 'name email phone')
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
-      .select('name stock category images')
-      .limit(10);
-
-    const monthlyRevenue = await ShopOrder.aggregate([
-      { $match: PAID_MATCH },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-          },
-          revenue: { $sum: '$totalAmount' },
-          orders: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': -1, '_id.month': -1 } },
-      { $limit: 6 },
-    ]);
-
-    const topProducts = await ShopOrder.aggregate([
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.productId',
-          name: { $first: '$items.name' },
-          totalSold: { $sum: '$items.quantity' },
-          revenue: { $sum: { $multiply: ['$items.priceAmount', '$items.quantity'] } },
-        },
-      },
-      { $sort: { totalSold: -1 } },
-      { $limit: 5 },
-    ]);
-
+    const { LOW_STOCK_THRESHOLD } = require('../lib/constants');
     const trendStart = new Date();
     trendStart.setDate(trendStart.getDate() - 29);
     trendStart.setHours(0, 0, 0, 0);
 
-    const revenueTrend = await ShopOrder.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: trendStart },
-          status: { $ne: 'cancelled' },
+    const [
+      totalProducts,
+      totalOrders,
+      totalCustomers,
+      totalSales,
+      recentOrders,
+      lowStockProducts,
+      monthlyRevenue,
+      topProducts,
+      revenueTrend,
+      orderValueTotal,
+    ] = await Promise.all([
+      Product.countDocuments(),
+      ShopOrder.countDocuments(),
+      User.countDocuments({ role: 'customer' }),
+      ShopOrder.aggregate([
+        { $match: PAID_MATCH },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]),
+      ShopOrder.find()
+        .populate('customer', 'name email phone')
+        .sort({ createdAt: -1 })
+        .limit(5),
+      Product.find({ stock: { $lte: LOW_STOCK_THRESHOLD } })
+        .select('name stock category images')
+        .limit(10),
+      ShopOrder.aggregate([
+        { $match: PAID_MATCH },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+            },
+            revenue: { $sum: '$totalAmount' },
+            orders: { $sum: 1 },
+          },
         },
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          revenue: { $sum: '$totalAmount' },
-          orders: { $sum: 1 },
+        { $sort: { '_id.year': -1, '_id.month': -1 } },
+        { $limit: 6 },
+      ]),
+      ShopOrder.aggregate([
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.productId',
+            name: { $first: '$items.name' },
+            totalSold: { $sum: '$items.quantity' },
+            revenue: { $sum: { $multiply: ['$items.priceAmount', '$items.quantity'] } },
+          },
         },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    const orderValueTotal = await ShopOrder.aggregate([
-      { $match: { status: { $ne: 'cancelled' } } },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+        { $sort: { totalSold: -1 } },
+        { $limit: 5 },
+      ]),
+      ShopOrder.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: trendStart },
+            status: { $ne: 'cancelled' },
+          },
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            revenue: { $sum: '$totalAmount' },
+            orders: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      ShopOrder.aggregate([
+        { $match: { status: { $ne: 'cancelled' } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]),
     ]);
 
     res.status(200).json({
@@ -311,10 +326,13 @@ router.get('/products', async (req, res) => {
       query.category = String(category).toLowerCase();
     }
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
+      const term = escapeRegex(String(search).trim());
+      if (term) {
+        query.$or = [
+          { name: { $regex: term, $options: 'i' } },
+          { description: { $regex: term, $options: 'i' } },
+        ];
+      }
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);

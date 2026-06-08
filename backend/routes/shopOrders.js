@@ -7,6 +7,8 @@ const {
   queueAdminNewOrder,
   queueCustomerStatusChange,
 } = require('../lib/orderNotifications');
+const { escapeRegex } = require('../lib/regex');
+const { validateOrderItems, totalsMatch } = require('../lib/orderPricing');
 
 const router = express.Router();
 
@@ -27,7 +29,7 @@ router.get('/', protect, async (req, res) => {
     }
 
     if (isAdmin && req.query.search) {
-      const term = String(req.query.search).trim();
+      const term = escapeRegex(String(req.query.search).trim());
       if (term) {
         query.$or = [
           { orderNumber: { $regex: term, $options: 'i' } },
@@ -85,11 +87,22 @@ router.post('/', protect, [
       return res.status(400).json({ success: false, message: addressError });
     }
 
+    const pricing = await validateOrderItems(items);
+    if (!pricing.ok) {
+      return res.status(400).json({ success: false, message: pricing.message });
+    }
+    if (!totalsMatch(pricing.totalAmount, totalAmount)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order total does not match product prices. Please refresh and try again.',
+      });
+    }
+
     const order = await ShopOrder.create({
       customer: req.user.id,
-      items,
+      items: pricing.items,
       shippingAddress,
-      totalAmount,
+      totalAmount: pricing.totalAmount,
       channel,
       status: 'pending',
       statusHistory: [{

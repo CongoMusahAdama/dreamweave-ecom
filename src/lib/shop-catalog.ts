@@ -93,7 +93,7 @@ export async function fetchApiCatalog(): Promise<ShopProduct[]> {
     const res = await apiFetch<{
       success: boolean;
       data: { products: ApiProduct[] };
-    }>('/api/products?limit=100&sort=createdAt&order=desc');
+    }>('/api/products?limit=500&sort=createdAt&order=desc');
 
     const mapped = (res.data.products || [])
       .map(mapApiProductToShop)

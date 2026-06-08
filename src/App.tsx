@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import RouteScrollToTop from './components/ui/RouteScrollToTop';
 import CartNavBridge from './components/shop/CartNavBridge';
@@ -7,11 +8,9 @@ import { CartProvider } from './contexts/CartContext';
 import { ShopCatalogProvider } from './contexts/ShopCatalogContext';
 import { CategoriesProvider } from './contexts/CategoriesContext';
 import { PaystackProvider } from './contexts/PaystackContext';
-import PaymentCallback from './pages/PaymentCallback';
-import { useState } from 'react';
 import AuthModal from './components/auth/AuthModal';
+import ErrorBoundary from './components/ui/error-boundary';
 
-// Import pages
 import Home from './pages/Index';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
@@ -21,19 +20,30 @@ import About from './pages/About';
 import Shipping from './pages/Shipping';
 import Privacy from './pages/Privacy';
 import Account from './pages/Account';
-import AdminDashboard from './admin/pages/Dashboard';
-import AdminProducts from './admin/pages/Products';
-import AdminOrders from './admin/pages/Orders';
-import AdminGallery from './admin/pages/Gallery';
-import AdminReceipts from './admin/pages/Receipts';
+import PaymentCallback from './pages/PaymentCallback';
 
-import ErrorBoundary from './components/ui/error-boundary';
+const AdminDashboard = lazy(() => import('./admin/pages/Dashboard'));
+const AdminProducts = lazy(() => import('./admin/pages/Products'));
+const AdminOrders = lazy(() => import('./admin/pages/Orders'));
+const AdminGallery = lazy(() => import('./admin/pages/Gallery'));
+const AdminReceipts = lazy(() => import('./admin/pages/Receipts'));
 
-// Protected Route Component
-const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: { 
-  children: React.ReactNode; 
-  requireAuth?: boolean; 
-  requireAdmin?: boolean; 
+const AdminFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-white">
+    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/40 animate-pulse">
+      Loading admin…
+    </p>
+  </div>
+);
+
+const ProtectedRoute = ({
+  children,
+  requireAuth = true,
+  requireAdmin = false,
+}: {
+  children: React.ReactNode;
+  requireAuth?: boolean;
+  requireAdmin?: boolean;
 }) => {
   const { isAuthenticated, isAdmin, loading, login } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -41,7 +51,7 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-army-green"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-army-green" />
       </div>
     );
   }
@@ -84,7 +94,7 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-6">You don't have permission to access this page</p>
+          <p className="text-gray-600 mb-6">You don&apos;t have permission to access this page</p>
           <Navigate to="/" replace />
         </div>
       </div>
@@ -94,124 +104,107 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
   return <>{children}</>;
 };
 
-// Main App Component
-const AppContent = () => {
-  const { isAuthenticated, login } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const handleAuthSuccess = async (token: string, user: any) => {
-    await login(token, user);
-  };
-
-  return (
-    <Router>
-      <RouteScrollToTop />
-      <CartProvider>
+const AppContent = () => (
+  <Router>
+    <RouteScrollToTop />
+    <CartProvider>
       <CategoriesProvider>
-      <ShopCatalogProvider>
-      <PaystackProvider>
-      <CartNavBridge />
-      <Toaster />
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-grow">
-          <ErrorBoundary>
-        <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/shipping" element={<Shipping />} />
-          <Route path="/returns" element={<Navigate to="/shipping#returns" replace />} />
-          <Route path="/privacy" element={<Privacy />} />
-              
-              <Route path="/products" element={<Products />} />
-              <Route path="/products/:id" element={<ProductDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/payment/callback" element={<PaymentCallback />} />
-              <Route
-                path="/account"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <Account />
-                  </ProtectedRoute>
-                }
-              />
+        <ShopCatalogProvider>
+          <PaystackProvider>
+            <CartNavBridge />
+            <Toaster />
+            <div className="min-h-screen flex flex-col">
+              <main className="flex-grow">
+                <ErrorBoundary>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/gallery" element={<Gallery />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/shipping" element={<Shipping />} />
+                    <Route path="/returns" element={<Navigate to="/shipping#returns" replace />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/products/:id" element={<ProductDetail />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/payment/callback" element={<PaymentCallback />} />
+                    <Route
+                      path="/account"
+                      element={
+                        <ProtectedRoute requireAuth>
+                          <Account />
+                        </ProtectedRoute>
+                      }
+                    />
 
-              {/* Protected Routes */}
-              
-              {/* Admin Routes */}
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/products" 
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminProducts />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/orders" 
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminOrders />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route
-                path="/admin/gallery"
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminGallery />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/receipts"
-                element={
-                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <AdminReceipts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
-              <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
-              <Route path="/admin/settings" element={<Navigate to="/admin" replace />} />
-              
-              {/* Catch all route */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-          </ErrorBoundary>
-        </main>
-
-        {/* Auth Modal */}
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-        />
-      </div>
-      </PaystackProvider>
-      </ShopCatalogProvider>
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminDashboard />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/products"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminProducts />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/orders"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminOrders />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/gallery"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminGallery />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/receipts"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminReceipts />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
+                    <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
+                    <Route path="/admin/settings" element={<Navigate to="/admin" replace />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </ErrorBoundary>
+              </main>
+            </div>
+          </PaystackProvider>
+        </ShopCatalogProvider>
       </CategoriesProvider>
-      </CartProvider>
-    </Router>
-  );
-};
+    </CartProvider>
+  </Router>
+);
 
-// Root App Component with AuthProvider
-const App = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-};
+const App = () => (
+  <AuthProvider>
+    <AppContent />
+  </AuthProvider>
+);
 
 export default App;

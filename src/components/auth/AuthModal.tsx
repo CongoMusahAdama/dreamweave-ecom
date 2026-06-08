@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
-import { API_BASE } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { sweetAuthSuccess, sweetError } from '@/lib/sweet-alert';
+import type { AuthUser } from '@/types/customer';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (token: string, user: any) => void | Promise<void>;
+  onSuccess: (token: string, user: AuthUser) => void | Promise<void>;
   initialMode?: 'login' | 'register';
   /** When true, stay on current page (checkout, wishlist). Default: go to account/admin after auth */
   stayOnPage?: boolean;
@@ -118,15 +119,17 @@ const AuthModal = ({
             ...(formData.phone.trim() ? { phone: formData.phone.trim() } : {}),
           };
 
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const data = await apiFetch<{
+        success: boolean;
+        message?: string;
+        errors?: { msg: string }[];
+        data: { token: string; user: AuthUser };
+      }>(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(getApiErrorMessage(data, 'Authentication failed'));
       }
 

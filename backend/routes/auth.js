@@ -39,6 +39,13 @@ router.post('/register', [
     .trim()
     .isLength({ min: 7, max: 20 })
     .withMessage('Please provide a valid phone number')
+    .custom((value) => {
+      const { isValidPhoneInput } = require('../lib/phone');
+      if (!isValidPhoneInput(value)) {
+        throw new Error('Please provide a valid phone number');
+      }
+      return true;
+    }),
 ], async (req, res) => {
   try {
     // Check for validation errors

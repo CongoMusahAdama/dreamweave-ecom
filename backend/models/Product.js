@@ -158,6 +158,9 @@ productSchema.index({
   category: 'text',
   tags: 'text'
 });
+productSchema.index({ isActive: 1, category: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, isFeatured: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, createdAt: -1 });
 
 // Pre-save middleware to generate SKU if not provided
 productSchema.pre('save', function(next) {

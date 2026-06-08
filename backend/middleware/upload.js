@@ -113,15 +113,11 @@ const uploadToCloudinary = async (file, folder = 'harv-dreams') => {
   }
 };
 
-// Delete image from Cloudinary
-const deleteImage = async (publicId) => {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId);
-    return result;
-  } catch (error) {
-    console.error('Error deleting image:', error);
-    throw error;
-  }
+const { deleteCloudinaryUrl } = require('../lib/cloudinaryAssets');
+
+// Delete image from Cloudinary by URL or public_id
+const deleteImage = async (urlOrPublicId) => {
+  return deleteCloudinaryUrl(urlOrPublicId);
 };
 
 module.exports = {

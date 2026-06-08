@@ -54,10 +54,30 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
+const {
+  AUTH_RATE_LIMIT_WINDOW_MS,
+  AUTH_RATE_LIMIT_MAX,
+  API_RATE_LIMIT_WINDOW_MS,
+  API_RATE_LIMIT_MAX,
+} = require('./lib/constants');
+
+// Stricter rate limit on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
+  max: AUTH_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many auth attempts. Please try again later.' },
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// General API rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: API_RATE_LIMIT_WINDOW_MS,
+  max: API_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
@@ -153,7 +173,18 @@ async function warnIfCloudinaryMisconfigured() {
   );
 }
 
-mongoose.connect(process.env.MONGODB_URI)
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16)
+) {
+  console.error('❌ JWT_SECRET must be set and at least 16 characters in production');
+  process.exit(1);
+}
+
+mongoose.connect(process.env.MONGODB_URI, {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 10_000,
+})
   .then(async () => {
     console.log('✅ Connected to MongoDB');
     await ensureDefaultCategories();

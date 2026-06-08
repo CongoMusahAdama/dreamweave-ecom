@@ -1,6 +1,8 @@
 const express = require('express');
 const User = require('../models/User');
-const Order = require('../models/Order');
+const ShopOrder = require('../models/ShopOrder');
+const { escapeRegex } = require('../lib/regex');
+const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -15,11 +17,14 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
     let query = { role: 'customer' };
     
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ];
+      const term = escapeRegex(String(search).trim());
+      if (term) {
+        query.$or = [
+          { name: { $regex: term, $options: 'i' } },
+          { email: { $regex: term, $options: 'i' } },
+          { phone: { $regex: term, $options: 'i' } },
+        ];
+      }
     }
 
     const customers = await User.find(query)
@@ -74,21 +79,26 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
       });
     }
 
-    // Get customer orders
-    const orders = await Order.find({ customer: customer._id })
-      .populate('items.product', 'name images')
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    // Calculate customer statistics
-    const totalOrders = await Order.countDocuments({ customer: customer._id });
-    const totalSpent = await Order.aggregate([
-      { $match: { customer: customer._id, status: { $in: ['delivered', 'shipped'] } } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    const paidStatuses = ['delivered', 'shipped', 'confirmed', 'processing'];
+    const [orders, totalOrders, totalSpent, lastOrder] = await Promise.all([
+      ShopOrder.find({ customer: customer._id })
+        .sort({ createdAt: -1 })
+        .limit(10),
+      ShopOrder.countDocuments({ customer: customer._id }),
+      ShopOrder.aggregate([
+        {
+          $match: {
+            customer: customer._id,
+            $or: [
+              { paymentStatus: 'paid' },
+              { status: { $in: paidStatuses } },
+            ],
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]),
+      ShopOrder.findOne({ customer: customer._id }).sort({ createdAt: -1 }),
     ]);
-
-    const lastOrder = await Order.findOne({ customer: customer._id })
-      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -100,7 +110,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
           lastOrder: lastOrder ? {
             id: lastOrder._id,
             orderNumber: lastOrder.orderNumber,
-            totalAmount: lastOrder.totalPrice,
+            totalAmount: lastOrder.totalAmount,
             status: lastOrder.status,
             createdAt: lastOrder.createdAt
           } : null
@@ -120,8 +130,21 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
 // @desc    Update customer (admin only)
 // @route   PUT /api/customers/:id
 // @access  Private (Admin only)
-router.put('/:id', protect, authorize('admin'), async (req, res) => {
+router.put('/:id', protect, authorize('admin'), [
+  body('name').optional().trim().isLength({ min: 2, max: 50 }),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('phone').optional({ values: 'null' }).trim(),
+  body('isActive').optional().isBoolean(),
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0]?.msg || 'Validation failed',
+      });
+    }
+
     const { name, email, phone, isActive, addresses } = req.body;
 
     const customer = await User.findById(req.params.id);
@@ -139,10 +162,18 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
       });
     }
 
-    // Update fields
     if (name) customer.name = name;
-    if (email) customer.email = email;
-    if (phone) customer.phone = phone;
+    if (email && email !== customer.email) {
+      const existing = await User.findOne({ email });
+      if (existing && existing._id.toString() !== customer._id.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Another account already uses this email',
+        });
+      }
+      customer.email = email;
+    }
+    if (phone !== undefined) customer.phone = phone ? String(phone).trim() : undefined;
     if (isActive !== undefined) customer.isActive = isActive;
     if (addresses) customer.addresses = addresses;
 

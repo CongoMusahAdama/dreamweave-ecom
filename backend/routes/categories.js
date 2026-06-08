@@ -6,6 +6,7 @@ const { protect, authorize } = require('../middleware/auth');
 const {
   slugifyCategory,
   listActiveCategories,
+  invalidateCategoryCache,
 } = require('../lib/categories');
 
 const router = express.Router();
@@ -60,6 +61,7 @@ router.post('/', protect, authorize('admin'), [
       sortOrder,
       isActive: true,
     });
+    invalidateCategoryCache();
 
     res.status(201).json({
       success: true,
@@ -90,6 +92,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     }
 
     await category.deleteOne();
+    invalidateCategoryCache();
 
     res.status(200).json({
       success: true,

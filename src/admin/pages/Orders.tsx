@@ -11,6 +11,7 @@ import {
   PAYMENT_STATUS_LABEL,
 } from '@/lib/order-status';
 import { sweetInfo, sweetSuccessCenter } from '@/lib/sweet-alert';
+import { useOrderPolling } from '@/hooks/useOrderPolling';
 
 const PAGE_SIZE = 10;
 const ORDERS_POLL_MS = 20_000;
@@ -138,23 +139,17 @@ const Orders = () => {
     void loadOrders();
   }, [loadOrders]);
 
-  useEffect(() => {
-    if (!token) return;
-    const id = window.setInterval(() => {
-      void loadOrders({ notify: true, silent: true });
-    }, ORDERS_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [loadOrders, token]);
+  const pollOrders = useCallback(
+    (options: { notify: boolean; silent: boolean }) => loadOrders(options),
+    [loadOrders]
+  );
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && token) {
-        void loadOrders({ notify: true, silent: true });
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [loadOrders, token]);
+  useOrderPolling({
+    enabled: Boolean(token),
+    intervalMs: ORDERS_POLL_MS,
+    token,
+    onPoll: pollOrders,
+  });
 
   useEffect(() => {
     setPage(1);

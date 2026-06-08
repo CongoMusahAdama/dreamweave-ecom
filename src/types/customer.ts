@@ -39,6 +39,7 @@ export interface DeliveryDetails {
 
 export interface ShopOrderItem {
   productId: number;
+  mongoProductId?: string;
   name: string;
   size: string;
   quantity: number;
