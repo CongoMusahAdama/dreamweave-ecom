@@ -22,12 +22,12 @@ const Hero = () => {
             </ScrollReveal>
 
             <ScrollReveal variant="fade-up" delay={180}>
-              <h1 className="heading-display text-lg sm:text-2xl md:text-3xl text-white mb-1 sm:mb-2">
+              <p className="heading-display text-lg sm:text-2xl md:text-3xl text-white mb-1 sm:mb-2" role="presentation">
                 Dream Boldly,
-              </h1>
-              <h1 className="heading-display text-lg sm:text-2xl md:text-3xl text-white/85 mb-4 sm:mb-5">
+              </p>
+              <p className="heading-display text-lg sm:text-2xl md:text-3xl text-white/85 mb-4 sm:mb-5" role="presentation">
                 Wear Dreams.
-              </h1>
+              </p>
             </ScrollReveal>
 
             <ScrollReveal variant="fade-up" delay={260}>

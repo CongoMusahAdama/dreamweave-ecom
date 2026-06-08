@@ -10,6 +10,7 @@ const Index = () => {
     <div className="min-h-screen bg-white overflow-x-hidden selection:bg-black selection:text-white">
       <Header variant="solid" />
       <main>
+        <h1 className="sr-only">HARV DREAMS — Bold Streetwear from Ghana</h1>
         <Hero />
         <FeaturedProducts />
       </main>

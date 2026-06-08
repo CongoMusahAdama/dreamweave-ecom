@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const ShopOrder = require('../models/ShopOrder');
 const { isBrevoConfigured, sendTransactionalEmail, sendTransactionalSms } = require('./brevo');
+const { harvEmailLayout } = require('./emailTemplate');
 const { normalizePhoneForSms } = require('./phone');
 
 const STATUS_LABEL = {
@@ -133,24 +134,28 @@ async function notifyAdminNewOrder(orderOrId) {
       deliveryText(order.shippingAddress),
     ].join('\n');
 
-    const html = `
-      <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111">
-        <h2 style="font-size:14px;letter-spacing:0.12em;text-transform:uppercase">New ${channel} order</h2>
-        <p><strong>${order.orderNumber}</strong> · ${formatGhs(order.totalAmount)}</p>
-        <p style="font-size:12px;color:#555">
-          Order ID: ${order._id}<br/>
-          Payment: ${payment}<br/>
-          Status: ${STATUS_LABEL[order.status] || order.status}
-        </p>
-        <p style="font-size:12px"><strong>Customer</strong><br/>
+    const html = harvEmailLayout({
+      title: `New ${channel} order`,
+      preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
+      bodyHtml: `
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;">${order.orderNumber}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#444;">${formatGhs(order.totalAmount)}</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;font-size:12px;color:#555;">
+          <tr><td style="padding:4px 0;"><strong>Payment</strong></td><td style="padding:4px 0;">${payment}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>Status</strong></td><td style="padding:4px 0;">${STATUS_LABEL[order.status] || order.status}</td></tr>
+        </table>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;">Customer</p>
+        <p style="margin:0 0 20px;font-size:12px;line-height:1.6;color:#444;">
           ${customerName(order)}<br/>
-          ${customerEmail(order) || ''}<br/>
-          ${customerPhone(order) || ''}
+          ${customerEmail(order) || '—'}<br/>
+          ${customerPhone(order) || '—'}
         </p>
-        <ul style="font-size:12px;padding-left:18px">${itemsHtml(order.items)}</ul>
-        <pre style="font-size:11px;background:#f6f6f6;padding:12px;white-space:pre-wrap">${deliveryText(order.shippingAddress)}</pre>
-        <p style="font-size:11px;color:#888">Open Admin → Orders to confirm payment or update status.</p>
-      </div>`;
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;">Items</p>
+        <ul style="margin:0 0 20px;padding-left:18px;font-size:12px;line-height:1.7;color:#444;">${itemsHtml(order.items)}</ul>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;">Delivery</p>
+        <p style="margin:0 0 20px;font-size:11px;line-height:1.6;color:#555;background:#f6f6f6;padding:12px;border:1px solid #e8e8e8;white-space:pre-wrap;">${deliveryText(order.shippingAddress)}</p>
+        <p style="margin:0;font-size:11px;color:#888;">Open Admin → Orders to confirm payment or update status.</p>`,
+    });
 
     await sendTransactionalEmail({
       to: { email: to, name: 'HARV Admin' },
@@ -185,7 +190,16 @@ async function notifyAdminPaymentReceived(orderOrId) {
       to: { email: to, name: 'HARV Admin' },
       subject,
       textContent: text,
-      htmlContent: `<p><strong>Payment received</strong> for ${order.orderNumber} (${formatGhs(order.totalAmount)}).</p><p>Customer: ${customerName(order)}</p>`,
+      htmlContent: harvEmailLayout({
+        title: 'Payment received',
+        preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
+        bodyHtml: `
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#111;">
+            Paystack payment confirmed for <strong>${order.orderNumber}</strong>.
+          </p>
+          <p style="margin:0 0 8px;font-size:13px;color:#444;">Total: ${formatGhs(order.totalAmount)}</p>
+          <p style="margin:0;font-size:12px;color:#555;">Customer: ${customerName(order)}</p>`,
+      }),
     });
   });
 }
@@ -218,14 +232,19 @@ async function notifyCustomerOrderStatus(orderOrId, previousStatus) {
       `Track your order in your HARV account.`,
     ].join('\n');
 
-    const html = `
-      <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111">
-        <p>Hi ${name},</p>
-        <p>Your order <strong>${order.orderNumber}</strong> is now <strong>${label}</strong>.</p>
-        <p style="font-size:13px;color:#444">${smsLine}</p>
-        <p style="font-size:12px;color:#666">Total: ${formatGhs(order.totalAmount)}</p>
-        <p style="font-size:11px;color:#888">Sign in to your account to view order details.</p>
-      </div>`;
+    const accountUrl = `${(process.env.FRONTEND_URL || 'https://harvdreams.com').replace(/\/$/, '')}/account`;
+    const html = harvEmailLayout({
+      title: `Order ${label}`,
+      preheader: `${order.orderNumber} is now ${label}`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#111;">Hi ${name},</p>
+        <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#111;">
+          Your order <strong>${order.orderNumber}</strong> is now <strong>${label}</strong>.
+        </p>
+        <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#444;">${smsLine}</p>
+        <p style="margin:0 0 24px;font-size:12px;color:#666;">Total: ${formatGhs(order.totalAmount)}</p>
+        <a href="${accountUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 24px;">View your order</a>`,
+    });
 
     const tasks = [];
     if (email) {
