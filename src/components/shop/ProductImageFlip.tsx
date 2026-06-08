@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { FlipHorizontal2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { galleryImageLabel } from '@/lib/product-images';
-
 type ProductImageFlipProps = {
   images: string[];
+  /** Optional labels aligned with images (from admin product form) */
+  labels?: string[];
   alt: string;
   className?: string;
   imageClassName?: string;
@@ -23,6 +23,7 @@ type ProductImageFlipProps = {
 
 const ProductImageFlip = ({
   images,
+  labels,
   alt,
   className,
   imageClassName,
@@ -100,11 +101,11 @@ const ProductImageFlip = ({
         draggable={false}
       />
 
-      {canFlip && showViewLabel && (
+      {canFlip && showViewLabel && labels?.[displayIndex]?.trim() ? (
         <span className="absolute top-2 left-2 z-[5] bg-white/95 border border-black/10 px-2 py-1 text-[8px] font-bold tracking-[0.15em] uppercase text-black pointer-events-none">
-          {galleryImageLabel(displayIndex, images.length)}
+          {labels[displayIndex]}
         </span>
-      )}
+      ) : null}
 
       {canFlip && showControls && (
         <div className="absolute bottom-2 right-2 z-[5] flex items-center gap-1 pointer-events-auto">

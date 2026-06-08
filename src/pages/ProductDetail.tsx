@@ -8,7 +8,7 @@ import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import { useCategories } from '@/contexts/CategoriesContext';
 import { useShopCatalog } from '@/contexts/ShopCatalogContext';
-import { getProductGalleryImages, galleryImageLabel } from '@/lib/product-images';
+import { getProductGalleryImages } from '@/lib/product-images';
 import ProductImageFlip from '@/components/shop/ProductImageFlip';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,7 +84,8 @@ const ProductDetail = () => {
   }
 
   const isSoldOut = product.stock === 0;
-  const images = getProductGalleryImages(product);
+  const gallery = getProductGalleryImages(product);
+  const imageUrls = gallery.map((img) => img.url);
   const lineTotal = product.priceAmount * purchase.quantity;
   const colorLabel = resolveColorPreference(purchase.colorChoice, purchase.colorCustom);
   const deliveryInitial = getDeliveryFromUser(user);
@@ -199,7 +200,8 @@ const ProductDetail = () => {
                   </div>
                 )}
                 <ProductImageFlip
-                  images={images}
+                  images={imageUrls}
+                  labels={gallery.map((img) => img.label)}
                   alt={product.name}
                   className="w-full"
                   imageClassName={cn(
@@ -211,15 +213,15 @@ const ProductDetail = () => {
                   showControls={false}
                   showViewLabel={false}
                   showIndicators={false}
-                  enableHoverFlip={images.length >= 2}
+                  enableHoverFlip={gallery.length >= 2}
                 />
               </div>
 
-              {images.length > 1 && (
+              {gallery.length > 1 && (
                 <div className="flex flex-row gap-2 mt-2 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-1 max-w-full">
-                  {images.map((src, index) => (
+                  {gallery.map((entry, index) => (
                     <button
-                      key={`${src}-${index}`}
+                      key={`${entry.url}-${index}`}
                       type="button"
                       onClick={() => setSelectedImage(index)}
                       className={cn(
@@ -235,11 +237,13 @@ const ProductDetail = () => {
                             : 'border-black/15'
                         )}
                       >
-                        <img src={src} alt="" className="max-h-full max-w-full object-contain" />
+                        <img src={entry.url} alt="" className="max-h-full max-w-full object-contain" />
                       </span>
-                      <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-black/50 mt-1">
-                        {galleryImageLabel(index, images.length)}
-                      </span>
+                      {entry.label ? (
+                        <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-black/50 mt-1">
+                          {entry.label}
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>

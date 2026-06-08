@@ -39,6 +39,7 @@ export interface MongoProduct {
   soldOut?: boolean;
   isActive?: boolean;
   images?: { front?: string; back?: string; additional?: string[] };
+  imageLabels?: { front?: string; back?: string; additional?: string[] };
   colors?: { name: string; code?: string }[];
   sizes?: { name: string; stock?: number }[];
   createdAt?: string;
@@ -58,6 +59,15 @@ export interface DashboardPayload {
   recentOrders: AdminShopOrder[];
   lowStockProducts: { _id: string; name: string; stock: number; category: string }[];
   revenueTrend?: RevenueTrendPoint[];
+}
+
+export interface SiteSettings {
+  logoUrl: string;
+  logoAlt: string;
+  storeName: string;
+  storeEmail: string;
+  storePhone: string;
+  storeCity: string;
 }
 
 export interface GalleryItem {

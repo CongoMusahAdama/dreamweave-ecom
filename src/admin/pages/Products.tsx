@@ -10,6 +10,7 @@ import AdminProductSizesField from '../components/products/AdminProductSizesFiel
 import { DEFAULT_PRODUCT_SIZES } from '@/lib/product-sizes';
 import { useCategories } from '@/contexts/CategoriesContext';
 import ProductImagePicker, {
+  type ImageRole,
   type ProductImageEntry,
 } from '../components/products/ProductImagePicker';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
 import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
+import { resolveGalleryLabel } from '@/lib/product-images';
 import type { MongoProduct } from '../types/admin';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +90,11 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
   const [editingProduct, setEditingProduct] = useState<MongoProduct | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [productImages, setProductImages] = useState<ProductImageEntry[]>([]);
+  const [existingImageLabels, setExistingImageLabels] = useState({
+    front: '',
+    back: '',
+    additional: [] as string[],
+  });
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -133,6 +140,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     productImages.forEach((img) => URL.revokeObjectURL(img.preview));
     setForm(emptyForm);
     setProductImages([]);
+    setExistingImageLabels({ front: '', back: '', additional: [] });
     setEditingProduct(null);
     setError('');
     setMode('idle');
@@ -148,8 +156,30 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     setProductImages([]);
     setEditingProduct(product);
     setForm(productToForm(product));
+    setExistingImageLabels({
+      front: resolveGalleryLabel(product.imageLabels?.front, 0, product.colors?.map((c) => c.name)),
+      back: resolveGalleryLabel(product.imageLabels?.back, 1, product.colors?.map((c) => c.name)),
+      additional: [...(product.imageLabels?.additional || [])],
+    });
     setError('');
     setMode('edit');
+  };
+
+  const buildImageLabelsPayload = () => {
+    const labels = {
+      front: existingImageLabels.front.trim(),
+      back: existingImageLabels.back.trim(),
+      additional: [...existingImageLabels.additional],
+    };
+
+    for (const img of productImages) {
+      const label = img.label.trim();
+      if (img.role === 'front') labels.front = label;
+      else if (img.role === 'back') labels.back = label;
+      else labels.additional.push(label);
+    }
+
+    return labels;
   };
 
   const appendFormFields = (fd: FormData) => {
@@ -183,6 +213,26 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
       return;
     }
 
+    if (productImages.some((img) => !img.label.trim())) {
+      setError('Add a view label for each image (e.g. Black, White)');
+      return;
+    }
+
+    if (mode === 'edit' && editingProduct) {
+      const slots: ImageRole[] = [];
+      if (editingProduct.images?.front) slots.push('front');
+      if (
+        editingProduct.images?.back &&
+        editingProduct.images.back !== editingProduct.images.front
+      ) {
+        slots.push('back');
+      }
+      if (slots.some((slot) => !existingImageLabels[slot]?.trim())) {
+        setError('Add a view label for each current image (e.g. Black, White)');
+        return;
+      }
+    }
+
     if (form.colors.length === 0) {
       setError('Add at least one available color');
       return;
@@ -205,6 +255,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
         productImages.forEach((img) => fd.append('images', img.file));
         fd.append('imageRoles', JSON.stringify(productImages.map((img) => img.role)));
       }
+      fd.append('imageLabels', JSON.stringify(buildImageLabelsPayload()));
 
       if (mode === 'edit' && editingProduct) {
         await apiFormFetch(`/api/products/${editingProduct._id}`, fd, {
@@ -296,10 +347,11 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     void patchInventory(product._id, { soldOut: true });
   };
 
-  const existingImages: { label: string; src: string }[] = [];
+  const existingImages: { key: string; src: string; slot: ImageRole }[] = [];
   if (editingProduct?.images?.front) {
     existingImages.push({
-      label: 'Front',
+      key: 'front',
+      slot: 'front',
       src: productImageUrl(editingProduct.images.front),
     });
   }
@@ -308,7 +360,8 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     editingProduct.images.back !== editingProduct.images.front
   ) {
     existingImages.push({
-      label: 'Back',
+      key: 'back',
+      slot: 'back',
       src: productImageUrl(editingProduct.images.back),
     });
   }
@@ -347,20 +400,47 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
               />
             </label>
 
+            <AdminCategoryField
+              value={form.category}
+              onChange={(slug) => setForm((f) => ({ ...f, category: slug }))}
+            />
+            <AdminProductColorsField
+              colors={form.colors}
+              onChange={(colors) => setForm((f) => ({ ...f, colors }))}
+            />
+
             {mode === 'edit' && existingImages.length > 0 && (
               <div>
                 <span className={ADMIN_LABEL}>Current images</span>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {existingImages.map((img) => (
-                    <div key={img.label} className="border border-black/15 p-1">
+                <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider mb-2">
+                  Name each thumbnail with the color (e.g. Black, White). Shown under photos on the shop.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
+                  {existingImages.map((img, index) => (
+                    <div key={img.key} className="border border-black/15 bg-white">
                       <img
                         src={img.src}
-                        alt={img.label}
-                        className="w-16 h-16 object-contain bg-white"
+                        alt=""
+                        className="w-full aspect-square object-contain bg-white p-1"
                       />
-                      <p className="text-[8px] font-bold uppercase text-black/40 text-center mt-1">
-                        {img.label}
-                      </p>
+                      <label className="block p-2 border-t border-black/10">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-black/45">
+                          View label *
+                        </span>
+                        <input
+                          type="text"
+                          value={existingImageLabels[img.slot]}
+                          onChange={(e) =>
+                            setExistingImageLabels((prev) => ({
+                              ...prev,
+                              [img.slot]: e.target.value,
+                            }))
+                          }
+                          placeholder={form.colors[index]?.trim() || 'e.g. Black'}
+                          className="mt-1 w-full border border-black/15 bg-white px-2 py-2 min-h-[40px] text-[10px] font-bold text-black"
+                          required
+                        />
+                      </label>
                     </div>
                   ))}
                 </div>
@@ -374,6 +454,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
               images={productImages}
               onChange={setProductImages}
               maxImages={5}
+              colorSuggestions={form.colors}
             />
             {mode === 'add' && productImages.length === 0 ? (
               <p className="text-[8px] font-bold uppercase text-black/40 -mt-2">Required for new products</p>
@@ -445,17 +526,9 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
                 Mark as out of stock / sold out
               </span>
             </label>
-            <AdminCategoryField
-              value={form.category}
-              onChange={(slug) => setForm((f) => ({ ...f, category: slug }))}
-            />
             <AdminProductSizesField
               sizes={form.sizes}
               onChange={(sizes) => setForm((f) => ({ ...f, sizes }))}
-            />
-            <AdminProductColorsField
-              colors={form.colors}
-              onChange={(colors) => setForm((f) => ({ ...f, colors }))}
             />
             <div className="flex flex-wrap gap-2">
               <button type="submit" disabled={saving} className={ADMIN_BTN}>

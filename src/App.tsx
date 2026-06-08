@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ShopCatalogProvider } from './contexts/ShopCatalogContext';
 import { CategoriesProvider } from './contexts/CategoriesContext';
+import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import { PaystackProvider } from './contexts/PaystackContext';
 import AuthModal from './components/auth/AuthModal';
 import ErrorBoundary from './components/ui/error-boundary';
@@ -27,6 +28,7 @@ const AdminProducts = lazy(() => import('./admin/pages/Products'));
 const AdminOrders = lazy(() => import('./admin/pages/Orders'));
 const AdminGallery = lazy(() => import('./admin/pages/Gallery'));
 const AdminReceipts = lazy(() => import('./admin/pages/Receipts'));
+const AdminSettings = lazy(() => import('./admin/pages/Settings'));
 
 const AdminFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-white">
@@ -108,6 +110,7 @@ const AppContent = () => (
   <Router>
     <RouteScrollToTop />
     <CartProvider>
+      <SiteSettingsProvider>
       <CategoriesProvider>
         <ShopCatalogProvider>
           <PaystackProvider>
@@ -188,7 +191,16 @@ const AppContent = () => (
                     />
                     <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
                     <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
-                    <Route path="/admin/settings" element={<Navigate to="/admin" replace />} />
+                    <Route
+                      path="/admin/settings"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminSettings />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </ErrorBoundary>
@@ -197,6 +209,7 @@ const AppContent = () => (
           </PaystackProvider>
         </ShopCatalogProvider>
       </CategoriesProvider>
+      </SiteSettingsProvider>
     </CartProvider>
   </Router>
 );

@@ -16,6 +16,7 @@ type ApiProduct = {
   isActive?: boolean;
   createdAt?: string;
   images?: { front?: string; back?: string; additional?: string[] };
+  imageLabels?: { front?: string; back?: string; additional?: string[] };
   sizes?: { name: string; stock?: number }[];
   colors?: { name?: string; code?: string }[];
 };
@@ -65,6 +66,13 @@ export function mapApiProductToShop(p: ApiProduct): ShopProduct | null {
     frontImage: front,
     backImage: back,
     images,
+    imageLabels: p.imageLabels
+      ? {
+          front: p.imageLabels.front?.trim() || '',
+          back: p.imageLabels.back?.trim() || '',
+          additional: (p.imageLabels.additional || []).map((l) => l?.trim() || ''),
+        }
+      : undefined,
     category: p.category,
     stock: p.soldOut || p.stock <= 0 ? 0 : p.stock,
     sizes,

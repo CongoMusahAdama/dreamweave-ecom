@@ -14,6 +14,8 @@ export interface ShopProduct {
   frontImage: string;
   backImage: string;
   images: string[];
+  /** Admin-defined labels shown under gallery thumbnails */
+  imageLabels?: { front?: string; back?: string; additional?: string[] };
   category: string;
   stock: number;
   sizes: string[];

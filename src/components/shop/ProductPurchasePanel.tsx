@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Minus, Plus, ChevronDown } from 'lucide-react';
 import type { ShopProduct } from '@/data/products';
 import type { DeliveryDetails } from '@/types/customer';
@@ -76,11 +76,9 @@ const ProductPurchasePanel = ({
     });
   };
   const deliverySaved = isDeliveryComplete(delivery);
+  // Start collapsed only when delivery was already complete (e.g. saved profile).
+  // Do not auto-collapse while the user is typing — that unmounts the form mid-field.
   const [deliveryOpen, setDeliveryOpen] = useState(!deliverySaved);
-
-  useEffect(() => {
-    if (deliverySaved) setDeliveryOpen(false);
-  }, [deliverySaved]);
 
   const handleCheckout = (fn: () => void) => {
     if (!deliverySaved) {

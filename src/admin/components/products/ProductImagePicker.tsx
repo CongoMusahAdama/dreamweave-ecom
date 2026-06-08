@@ -10,25 +10,39 @@ export type ProductImageEntry = {
   file: File;
   preview: string;
   role: ImageRole;
+  /** Shown under thumbnails on the shop (e.g. Black, White) */
+  label: string;
 };
 
 type ProductImagePickerProps = {
   images: ProductImageEntry[];
   onChange: (images: ProductImageEntry[]) => void;
   maxImages?: number;
+  /** Prefills empty thumbnail labels (e.g. product colors: Black, White) */
+  colorSuggestions?: string[];
 };
-
-const ROLE_OPTIONS: { value: ImageRole; label: string }[] = [
-  { value: 'front', label: 'Front' },
-  { value: 'back', label: 'Back' },
-  { value: 'additional', label: 'Extra' },
-];
 
 function nextId() {
   return `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-const ProductImagePicker = ({ images, onChange, maxImages = 6 }: ProductImagePickerProps) => {
+function roleForIndex(index: number): ImageRole {
+  if (index === 0) return 'front';
+  if (index === 1) return 'back';
+  return 'additional';
+}
+
+function labelSuggestion(colors: string[] | undefined, index: number): string {
+  const name = colors?.[index]?.trim();
+  return name || '';
+}
+
+const ProductImagePicker = ({
+  images,
+  onChange,
+  maxImages = 6,
+  colorSuggestions = [],
+}: ProductImagePickerProps) => {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const imagesRef = useRef(images);
@@ -43,38 +57,69 @@ const ProductImagePicker = ({ images, onChange, maxImages = 6 }: ProductImagePic
     };
   }, []);
 
+  // Prefill empty labels when colors are added after images (e.g. Black, White for caps)
+  useEffect(() => {
+    if (!colorSuggestions.length) return;
+
+    const current = imagesRef.current;
+    if (current.length === 0) return;
+
+    const next = current.map((img, index) => {
+      if (img.label.trim()) return img;
+      const suggestion = labelSuggestion(colorSuggestions, index);
+      return suggestion ? { ...img, label: suggestion } : img;
+    });
+
+    if (next.some((img, i) => img.label !== current[i].label)) {
+      onChange(next);
+    }
+  }, [colorSuggestions, onChange]);
+
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
 
     const remaining = maxImages - images.length;
     const picked = Array.from(files).slice(0, remaining);
 
-    const next = picked.map((file, index) => ({
-      id: nextId(),
-      file,
-      preview: URL.createObjectURL(file),
-      role: (images.length === 0 && index === 0 ? 'front' : 'additional') as ImageRole,
-    }));
+    const startIndex = images.length;
+    const next = picked.map((file, index) => {
+      const absoluteIndex = startIndex + index;
+      return {
+        id: nextId(),
+        file,
+        preview: URL.createObjectURL(file),
+        role: roleForIndex(absoluteIndex),
+        label: labelSuggestion(colorSuggestions, absoluteIndex),
+      };
+    });
 
-    onChange([...images, ...next]);
+    onChange([...images, ...next].map((img, index) => ({
+      ...img,
+      role: roleForIndex(index),
+    })));
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const updateRole = (id: string, role: ImageRole) => {
-    onChange(images.map((img) => (img.id === id ? { ...img, role } : img)));
+  const updateLabel = (id: string, label: string) => {
+    onChange(images.map((img) => (img.id === id ? { ...img, label } : img)));
   };
 
   const removeImage = (id: string) => {
     const target = images.find((img) => img.id === id);
     if (target) URL.revokeObjectURL(target.preview);
-    onChange(images.filter((img) => img.id !== id));
+    onChange(
+      images
+        .filter((img) => img.id !== id)
+        .map((img, index) => ({ ...img, role: roleForIndex(index) }))
+    );
   };
 
   return (
     <div>
       <span className={ADMIN_LABEL}>Product images *</span>
       <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider mb-3">
-        Add one or more photos. Choose front, back, or extra for each.
+        Add one photo per color or view. Name each thumbnail (e.g. Black, White) — not &quot;Front&quot; or
+        &quot;Back&quot;. This text appears under thumbnails on the shop.
       </p>
 
       {images.length > 0 && (
@@ -96,20 +141,21 @@ const ProductImagePicker = ({ images, onChange, maxImages = 6 }: ProductImagePic
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <label className="block p-2 border-t border-black/10">
-                <span className="sr-only">Image view</span>
-                <select
-                  value={img.role}
-                  onChange={(e) => updateRole(img.id, e.target.value as ImageRole)}
-                  className="w-full border border-black/15 bg-white px-2 py-2 min-h-[40px] text-[9px] font-bold uppercase tracking-wider text-black"
-                >
-                  {ROLE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="p-2 border-t border-black/10 space-y-2">
+                <label className="block">
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-black/45">
+                    View label *
+                  </span>
+                  <input
+                    type="text"
+                    value={img.label}
+                    onChange={(e) => updateLabel(img.id, e.target.value)}
+                    placeholder={labelSuggestion(colorSuggestions, images.indexOf(img)) || 'e.g. Black'}
+                    className="mt-1 w-full border border-black/15 bg-white px-2 py-2 min-h-[40px] text-[10px] font-bold text-black placeholder:text-black/30"
+                    required
+                  />
+                </label>
+              </div>
             </div>
           ))}
         </div>

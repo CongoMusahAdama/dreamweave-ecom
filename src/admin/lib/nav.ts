@@ -4,6 +4,7 @@ import {
   ShoppingCart,
   Images,
   FileText,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/receipts', label: 'Order receipts', short: 'Receipts', icon: FileText },
   { href: '/admin/products', label: 'Product catalog', short: 'Stock', icon: Package },
   { href: '/admin/gallery', label: 'Site gallery', short: 'Photos', icon: Images },
+  { href: '/admin/settings', label: 'Settings', short: 'Settings', icon: Settings },
 ];
 
 export function isAdminNavActive(pathname: string, href: string, exact?: boolean) {

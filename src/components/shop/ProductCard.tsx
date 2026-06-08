@@ -17,8 +17,8 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
   const isSoldOut = product.stock === 0;
   const staggerDelay = Math.min(index * 70, 560);
   const gallery = getProductGalleryImages(product);
-  const frontImage = gallery[0];
-  const backImage = gallery.length > 1 ? gallery[1] : null;
+  const frontImage = gallery[0]?.url;
+  const backImage = gallery.length > 1 ? gallery[1]?.url : null;
   const hasBackView = Boolean(backImage && backImage !== frontImage);
 
   return (

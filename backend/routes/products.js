@@ -76,6 +76,23 @@ function parseSizesFromBody(sizesInput, stock = 0) {
   }
 }
 
+function parseImageLabelsFromBody(labelsInput) {
+  if (!labelsInput) return null;
+  try {
+    const parsed = typeof labelsInput === 'string' ? JSON.parse(labelsInput) : labelsInput;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      front: String(parsed.front || '').trim(),
+      back: String(parsed.back || '').trim(),
+      additional: Array.isArray(parsed.additional)
+        ? parsed.additional.map((label) => String(label || '').trim())
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 function parseColorsFromBody(colorsInput) {
   if (!colorsInput) return [];
   try {
@@ -281,7 +298,7 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       });
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles, soldOut, colors, sizes } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles, imageLabels, soldOut, colors, sizes } = req.body;
     const parsedColors = parseColorsFromBody(colors);
     const parsedStock = parseInt(stock, 10);
     const isSoldOut = soldOut === true || soldOut === 'true' || parsedStock <= 0;
@@ -318,6 +335,7 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
     }
 
     const images = await buildImagesFromUploads(files, imageRoles);
+    const parsedImageLabels = parseImageLabelsFromBody(imageLabels);
 
     const salePrice = parseFloat(price);
     let resolvedOriginalPrice = originalPrice ? parseFloat(originalPrice) : undefined;
@@ -343,6 +361,7 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       stock: isSoldOut ? 0 : parsedStock,
       soldOut: isSoldOut,
       images,
+      imageLabels: parsedImageLabels || { front: '', back: '', additional: [] },
       colors: parsedColors,
       sizes: parsedSizes,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
@@ -425,7 +444,14 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
       }
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut, colors, sizes } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, imageLabels, soldOut, colors, sizes } = req.body;
+
+    if (imageLabels !== undefined) {
+      const parsedImageLabels = parseImageLabelsFromBody(imageLabels);
+      if (parsedImageLabels) {
+        product.imageLabels = parsedImageLabels;
+      }
+    }
 
     if (colors !== undefined) {
       const parsedColors = parseColorsFromBody(colors);

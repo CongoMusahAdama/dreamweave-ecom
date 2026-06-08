@@ -20,6 +20,7 @@ const { isPaystackConfigured } = require('./lib/paystack');
 const { isBrevoConfigured } = require('./lib/brevo');
 const galleryRoutes = require('./routes/gallery');
 const categoryRoutes = require('./routes/categories');
+const settingsRoutes = require('./routes/settings');
 const { ensureDefaultCategories } = require('./lib/categories');
 
 const app = express();
@@ -117,6 +118,7 @@ app.use('/api/shop-orders', shopOrderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -38,6 +38,12 @@ const productSchema = new mongoose.Schema({
     },
     additional: [String]
   },
+  /** Customer-facing labels under gallery thumbnails (e.g. Black, White) */
+  imageLabels: {
+    front: { type: String, default: '' },
+    back: { type: String, default: '' },
+    additional: [String],
+  },
   sizes: [{
     name: {
       type: String,
