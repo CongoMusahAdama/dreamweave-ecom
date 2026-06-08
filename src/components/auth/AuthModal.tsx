@@ -235,6 +235,9 @@ const AuthModal = ({
                   autoComplete="tel"
                 />
               </div>
+              <p className="text-[9px] font-bold text-black/40 mt-1.5 leading-relaxed">
+                Skip for now — add or update your number anytime under Account → Profile.
+              </p>
             </div>
           )}
 

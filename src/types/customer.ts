@@ -17,6 +17,7 @@ export interface AuthUser {
   email: string;
   role: 'customer' | 'admin';
   phone?: string;
+  phoneVerified?: boolean;
   addresses?: UserAddress[];
   wishlist?: number[];
   avatar?: string;

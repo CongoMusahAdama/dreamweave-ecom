@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { isValidPhoneInput } = require('../lib/phone');
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ const formatUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
+  phoneVerified: Boolean(user.phoneVerified),
   role: user.role,
   addresses: user.addresses,
   wishlist: user.wishlist || [],
@@ -207,7 +209,7 @@ router.put('/profile', protect, [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
-  body('phone').optional().trim(),
+  body('phone').optional({ values: 'null' }).trim(),
   body('addresses').optional().isArray(),
 ], async (req, res) => {
   try {
@@ -216,6 +218,7 @@ router.put('/profile', protect, [
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
+        message: errors.array()[0]?.msg || 'Validation failed',
         errors: errors.array()
       });
     }
@@ -230,9 +233,23 @@ router.put('/profile', protect, [
       });
     }
 
-    // Update fields
     if (name) user.name = name;
-    if (phone) user.phone = phone;
+
+    if (phone !== undefined) {
+      const nextPhone = String(phone).trim();
+      if (nextPhone && !isValidPhoneInput(nextPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid phone number',
+        });
+      }
+      const prevPhone = (user.phone || '').trim();
+      user.phone = nextPhone || undefined;
+      if (nextPhone !== prevPhone) {
+        user.phoneVerified = false;
+      }
+    }
+
     if (addresses) user.addresses = addresses;
 
     await user.save();

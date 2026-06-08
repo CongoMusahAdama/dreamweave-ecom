@@ -8,6 +8,7 @@ import AccountOrdersTable from '@/components/account/AccountOrdersTable';
 import AccountWishlistGrid from '@/components/account/AccountWishlistGrid';
 import { ORDERS_PAGE_SIZE } from '@/components/account/OrdersTablePagination';
 import DeliverySection from '@/components/account/DeliverySection';
+import ProfileSection from '@/components/account/ProfileSection';
 import AccountSidebar, { type AccountSection } from '@/components/account/AccountSidebar';
 import SignOutConfirmDialog from '@/components/account/SignOutConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,17 +32,20 @@ const SECTION_TITLE: Record<AccountSection, string> = {
   orders: 'Your orders',
   wishlist: 'Wishlist',
   delivery: 'Delivery details',
+  profile: 'Profile & phone',
 };
 
 const Account = () => {
-  const { user, token, logout, refreshUser, isAdmin } = useAuth();
+  const { user, token, logout, refreshUser, updateUser, isAdmin } = useAuth();
   const { cartCount } = useCart();
   const { products: catalogProducts } = useShopCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const previewOrders = searchParams.get('previewOrders') === '1';
   const initialSection: AccountSection =
-    tabParam === 'wishlist' || tabParam === 'delivery' ? tabParam : 'orders';
+    tabParam === 'wishlist' || tabParam === 'delivery' || tabParam === 'profile'
+      ? tabParam
+      : 'orders';
 
   const [section, setSection] = useState<AccountSection>(initialSection);
   const [orders, setOrders] = useState<ShopOrder[]>([]);
@@ -216,6 +220,7 @@ const Account = () => {
               isAuthenticated
               userName={user?.name}
               userEmail={user?.email}
+              userPhone={user?.phone}
               orderCount={paginationTotal}
               wishlistCount={wishlistProducts.length}
               onSignIn={() => undefined}
@@ -240,6 +245,11 @@ const Account = () => {
                 {section === 'delivery' && (
                   <p className="text-[9px] font-bold tracking-[0.08em] uppercase text-black/45 mt-2 leading-relaxed">
                     Update address or pickup station anytime
+                  </p>
+                )}
+                {section === 'profile' && (
+                  <p className="text-[9px] font-bold tracking-[0.08em] uppercase text-black/45 mt-2 leading-relaxed">
+                    Add or update your phone for order SMS updates
                   </p>
                 )}
               </header>
@@ -270,6 +280,12 @@ const Account = () => {
                 {section === 'delivery' && (
                   <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-black/45 mt-2 leading-relaxed max-w-lg">
                     View saved details or tap Change to update your address or pickup station.
+                  </p>
+                )}
+                {section === 'profile' && (
+                  <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-black/45 mt-2 leading-relaxed max-w-lg">
+                    Phone is optional at signup. Add or change it here anytime — SMS verification
+                    will be available in a future update.
                   </p>
                 )}
               </header>
@@ -321,6 +337,17 @@ const Account = () => {
 
               {section === 'delivery' && (
                 <DeliverySection user={user} token={token} onSaved={refreshUser} />
+              )}
+
+              {section === 'profile' && user && token && (
+                <ProfileSection
+                  user={user}
+                  token={token}
+                  onSaved={(updated) => {
+                    updateUser(updated);
+                    void refreshUser();
+                  }}
+                />
               )}
             </div>
           </div>

@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LogOut, Package, Heart, MapPin } from 'lucide-react';
+import { LogOut, Package, Heart, MapPin, User } from 'lucide-react';
 
-export type AccountSection = 'orders' | 'wishlist' | 'delivery';
+export type AccountSection = 'orders' | 'wishlist' | 'delivery' | 'profile';
 
 const NAV_ITEMS: { key: AccountSection; label: string; shortLabel: string; icon: typeof Package }[] = [
   { key: 'orders', label: 'Orders', shortLabel: 'Orders', icon: Package },
   { key: 'wishlist', label: 'Wishlist', shortLabel: 'Saved', icon: Heart },
   { key: 'delivery', label: 'Delivery details', shortLabel: 'Delivery', icon: MapPin },
+  { key: 'profile', label: 'Profile', shortLabel: 'Profile', icon: User },
 ];
 
 function getInitials(name?: string) {
@@ -23,6 +24,7 @@ type AccountSidebarProps = {
   isAuthenticated: boolean;
   userName?: string;
   userEmail?: string;
+  userPhone?: string;
   orderCount?: number;
   wishlistCount?: number;
   onSignIn: () => void;
@@ -35,6 +37,7 @@ const AccountSidebar = ({
   isAuthenticated,
   userName,
   userEmail,
+  userPhone,
   orderCount = 0,
   wishlistCount = 0,
   onSignIn,
@@ -77,6 +80,11 @@ const AccountSidebar = ({
                 <p className="text-[9px] font-bold text-black/45 mt-0.5 break-all line-clamp-2">
                   {userEmail}
                 </p>
+                {userPhone ? (
+                  <p className="text-[9px] font-bold text-black/35 mt-0.5 tabular-nums">
+                    {userPhone}
+                  </p>
+                ) : null}
               </>
             ) : (
               <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-black mt-1">
@@ -105,7 +113,7 @@ const AccountSidebar = ({
       </div>
 
       <nav
-        className="grid grid-cols-3 gap-2 lg:flex lg:flex-col lg:gap-2"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:flex lg:flex-col lg:gap-2"
         aria-label="Account sections"
       >
         {NAV_ITEMS.map((item) => {

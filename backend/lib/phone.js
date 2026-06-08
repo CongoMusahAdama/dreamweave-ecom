@@ -19,4 +19,12 @@ function normalizePhoneForSms(phone, defaultCountryCode = '233') {
   return digits;
 }
 
-module.exports = { normalizePhoneForSms };
+function isValidPhoneInput(phone) {
+  if (!phone || typeof phone !== 'string') return true;
+  const trimmed = phone.trim();
+  if (!trimmed) return true;
+  if (!/^\+?[\d\s-()]{7,20}$/.test(trimmed)) return false;
+  return normalizePhoneForSms(trimmed) !== null;
+}
+
+module.exports = { normalizePhoneForSms, isValidPhoneInput };
