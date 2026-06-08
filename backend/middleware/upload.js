@@ -1,19 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
+const { configureCloudinary } = require('../lib/cloudinaryClient');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const cloudinary = configureCloudinary();
 
 // Configure storage
 const storage = multer.diskStorage({

@@ -143,24 +143,14 @@ if (process.env.NODE_ENV === 'production') {
 
 // MongoDB connection
 async function warnIfCloudinaryMisconfigured() {
-  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-    console.warn('⚠️  Cloudinary env vars missing — product images will use local /uploads (lost on Render redeploy).');
+  const { isCloudinaryReady } = require('./lib/cloudinaryClient');
+  if (await isCloudinaryReady()) {
+    console.log('✅ Cloudinary connected');
     return;
   }
-  try {
-    const cloudinary = require('cloudinary').v2;
-    cloudinary.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key: CLOUDINARY_API_KEY,
-      api_secret: CLOUDINARY_API_SECRET,
-    });
-    await cloudinary.api.ping();
-    console.log('✅ Cloudinary connected');
-  } catch (err) {
-    const msg = err?.error?.message || err?.message || 'unknown error';
-    console.warn(`⚠️  Cloudinary misconfigured (${msg}). Uploads fall back to /uploads — run npm run migrate:images after fixing CLOUDINARY_CLOUD_NAME.`);
-  }
+  console.warn(
+    '⚠️  Cloudinary misconfigured — use the exact Cloud name from console.cloudinary.com on Render.'
+  );
 }
 
 mongoose.connect(process.env.MONGODB_URI)

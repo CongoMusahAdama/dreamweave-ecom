@@ -11,6 +11,14 @@ function publicApiBase() {
   return `http://localhost:${port}`;
 }
 
+/** Where /uploads images are served (Netlify in production, API locally) */
+function uploadsPublicBase() {
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL.replace(/\/$/, '');
+  }
+  return publicApiBase();
+}
+
 function extractUploadsPath(url) {
   if (!url || typeof url !== 'string') return null;
   const match = url.match(/\/uploads\/[^?#]+/);
@@ -24,7 +32,7 @@ function normalizeStoredImageUrl(url) {
 
   const uploadsPath = extractUploadsPath(url);
   if (uploadsPath) {
-    return `${publicApiBase()}${uploadsPath}`;
+    return `${uploadsPublicBase()}${uploadsPath}`;
   }
 
   return url;
@@ -58,6 +66,7 @@ function localUploadPathFromUrl(url) {
 
 module.exports = {
   publicApiBase,
+  uploadsPublicBase,
   extractUploadsPath,
   normalizeStoredImageUrl,
   normalizeProductImages,

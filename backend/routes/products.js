@@ -4,7 +4,8 @@ const { body, validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingleImage, uploadMultipleImages, uploadToCloudinary, deleteImage } = require('../middleware/upload');
-const { publicApiBase, withNormalizedImages } = require('../lib/imageUrls');
+const { uploadsPublicBase, withNormalizedImages } = require('../lib/imageUrls');
+const { isCloudinaryReady } = require('../lib/cloudinaryClient');
 const { isValidCategorySlug } = require('../lib/categories');
 
 async function resolveImageUrl(file) {
@@ -12,9 +13,17 @@ async function resolveImageUrl(file) {
     const result = await uploadToCloudinary(file.path, 'products');
     if (result?.secure_url) return result.secure_url;
   } catch (uploadError) {
-    console.error('Cloudinary upload failed, using local path:', uploadError.message);
+    console.error('Cloudinary upload failed:', uploadError.message);
+    if (process.env.NODE_ENV === 'production') {
+      const ready = await isCloudinaryReady();
+      if (!ready) {
+        throw new Error(
+          'Image upload failed — fix CLOUDINARY_CLOUD_NAME on Render (must match your Cloudinary dashboard).'
+        );
+      }
+    }
   }
-  return `${publicApiBase()}/uploads/${path.basename(file.path)}`;
+  return `${uploadsPublicBase()}/uploads/${path.basename(file.path)}`;
 }
 
 async function buildImagesFromUploads(files, rolesInput) {

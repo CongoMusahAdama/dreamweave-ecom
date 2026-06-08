@@ -32,7 +32,17 @@ export function productImageUrl(path?: string | null) {
 
   if (path.startsWith('https://res.cloudinary.com/')) return path;
 
-
+  // Legacy Render /uploads URLs — images are served from the Netlify site
+  if (path.includes('.onrender.com/uploads/')) {
+    const legacyPath = extractUploadsPath(path);
+    if (legacyPath) {
+      const site =
+        typeof window !== 'undefined'
+          ? window.location.origin
+          : 'https://harvdreams.com';
+      return `${site.replace(/\/$/, '')}${legacyPath}`;
+    }
+  }
 
   const uploadsPath = extractUploadsPath(path);
 
