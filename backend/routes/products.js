@@ -9,20 +9,24 @@ const { isCloudinaryReady } = require('../lib/cloudinaryClient');
 const { isValidCategorySlug } = require('../lib/categories');
 
 async function resolveImageUrl(file) {
-  try {
-    const result = await uploadToCloudinary(file.path, 'products');
-    if (result?.secure_url) return result.secure_url;
-  } catch (uploadError) {
-    console.error('Cloudinary upload failed:', uploadError.message);
-    if (process.env.NODE_ENV === 'production') {
-      const ready = await isCloudinaryReady();
-      if (!ready) {
-        throw new Error(
-          'Image upload failed — fix CLOUDINARY_CLOUD_NAME on Render (must match your Cloudinary dashboard).'
-        );
-      }
+  const ready = await isCloudinaryReady();
+  if (ready) {
+    try {
+      const result = await uploadToCloudinary(file.path, 'products');
+      if (result?.secure_url) return result.secure_url;
+    } catch (uploadError) {
+      console.error('Cloudinary upload failed:', uploadError.message);
+      throw new Error('Image upload failed — check Cloudinary settings on Render.');
     }
+    throw new Error('Image upload failed — Cloudinary returned no URL.');
   }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Image upload failed — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Render.'
+    );
+  }
+
   return `${uploadsPublicBase()}/uploads/${path.basename(file.path)}`;
 }
 

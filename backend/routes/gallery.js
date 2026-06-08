@@ -4,19 +4,32 @@ const { body, validationResult } = require('express-validator');
 const GalleryItem = require('../models/GalleryItem');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingleImage, uploadToCloudinary } = require('../middleware/upload');
-const { publicApiBase, normalizeStoredImageUrl } = require('../lib/imageUrls');
+const { uploadsPublicBase, normalizeStoredImageUrl } = require('../lib/imageUrls');
+const { isCloudinaryReady } = require('../lib/cloudinaryClient');
 
 const router = express.Router();
 
 async function resolveImageUrl(file) {
   if (!file) return '';
-  try {
-    const result = await uploadToCloudinary(file.path, 'gallery');
-    if (result?.secure_url) return result.secure_url;
-  } catch (err) {
-    console.error('Gallery Cloudinary upload failed, using local path:', err.message);
+  const ready = await isCloudinaryReady();
+  if (ready) {
+    try {
+      const result = await uploadToCloudinary(file.path, 'gallery');
+      if (result?.secure_url) return result.secure_url;
+    } catch (err) {
+      console.error('Gallery Cloudinary upload failed:', err.message);
+      throw new Error('Image upload failed — check Cloudinary settings on Render.');
+    }
+    throw new Error('Image upload failed — Cloudinary returned no URL.');
   }
-  return `${publicApiBase()}/uploads/${path.basename(file.path)}`;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Image upload failed — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Render.'
+    );
+  }
+
+  return `${uploadsPublicBase()}/uploads/${path.basename(file.path)}`;
 }
 
 // @desc    List gallery images (public)
