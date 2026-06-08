@@ -5,6 +5,7 @@ import { Toaster } from './components/ui/sonner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ShopCatalogProvider } from './contexts/ShopCatalogContext';
+import { CategoriesProvider } from './contexts/CategoriesContext';
 import { PaystackProvider } from './contexts/PaystackContext';
 import PaymentCallback from './pages/PaymentCallback';
 import { useState } from 'react';
@@ -106,6 +107,7 @@ const AppContent = () => {
     <Router>
       <RouteScrollToTop />
       <CartProvider>
+      <CategoriesProvider>
       <ShopCatalogProvider>
       <PaystackProvider>
       <CartNavBridge />
@@ -197,6 +199,7 @@ const AppContent = () => {
       </div>
       </PaystackProvider>
       </ShopCatalogProvider>
+      </CategoriesProvider>
       </CartProvider>
     </Router>
   );

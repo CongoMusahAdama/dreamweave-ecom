@@ -4,6 +4,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { NEW_ARRIVALS_HASH, NEW_ARRIVALS_SECTION_ID } from '@/lib/scroll-to';
 import { HEADER_OFFSET_SCROLL_MT } from '@/lib/page-layout';
 import { useShopCatalog } from '@/contexts/ShopCatalogContext';
+import { useCategories } from '@/contexts/CategoriesContext';
+import { sortShopProductsNewestFirst } from '@/lib/shop-catalog';
+import { buildFeaturedCategoryTabs } from '@/lib/categories';
 import ProductCard from '@/components/shop/ProductCard';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 
@@ -11,6 +14,7 @@ const DISPLAY_LIMIT = 16;
 
 const FeaturedProducts = () => {
   const { products: shopProducts } = useShopCatalog();
+  const { categories: shopCategories } = useCategories();
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('new-arrivals');
 
@@ -20,16 +24,10 @@ const FeaturedProducts = () => {
     }
   }, [location.hash]);
 
-  const categories = [
-    { key: 'new-arrivals', label: 'NEW ARRIVALS' },
-    { key: 'all', label: 'ALL' },
-    { key: 'tees', label: 'TEES' },
-    { key: 'hoodies', label: 'HOODIES' },
-    { key: 'bottoms', label: 'BOTTOMS' },
-  ];
+  const categories = buildFeaturedCategoryTabs(shopCategories);
 
   const filteredProducts = useMemo(() => {
-    const sorted = [...shopProducts].sort((a, b) => b.id - a.id);
+    const sorted = sortShopProductsNewestFirst(shopProducts);
     if (selectedCategory === 'all' || selectedCategory === 'new-arrivals') {
       return sorted.slice(0, DISPLAY_LIMIT);
     }

@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingleImage, uploadMultipleImages, uploadToCloudinary, deleteImage } = require('../middleware/upload');
 const { publicApiBase, withNormalizedImages } = require('../lib/imageUrls');
+const { isValidCategorySlug } = require('../lib/categories');
 
 async function resolveImageUrl(file) {
   try {
@@ -51,6 +52,29 @@ async function buildImagesFromUploads(files, rolesInput) {
   }
 
   return images;
+}
+
+function parseColorsFromBody(colorsInput) {
+  if (!colorsInput) return [];
+  try {
+    const parsed = typeof colorsInput === 'string' ? JSON.parse(colorsInput) : colorsInput;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => {
+        if (typeof entry === 'string') {
+          const name = entry.trim();
+          return name ? { name } : null;
+        }
+        if (entry?.name) {
+          const name = String(entry.name).trim();
+          return name ? { name, code: entry.code || undefined } : null;
+        }
+        return null;
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 const router = express.Router();
@@ -169,8 +193,9 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
     .isFloat({ min: 0 })
     .withMessage('Price must be a positive number'),
   body('category')
-    .isIn(['hoodies', 'tees', 'jerseys', 'caps', 'accessories'])
-    .withMessage('Invalid category'),
+    .trim()
+    .notEmpty()
+    .withMessage('Category is required'),
   body('stock')
     .isInt({ min: 0 })
     .withMessage('Stock must be a non-negative integer'),
@@ -193,7 +218,22 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       });
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles, soldOut, colors } = req.body;
+    const parsedColors = parseColorsFromBody(colors);
+
+    if (!(await isValidCategorySlug(category))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category — add it under Categories first',
+      });
+    }
+
+    if (parsedColors.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one available color is required',
+      });
+    }
     const files = req.files?.length ? req.files : req.file ? [req.file] : [];
 
     if (!files.length) {
@@ -219,6 +259,9 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       resolvedOriginalPrice = undefined;
     }
 
+    const parsedStock = parseInt(stock, 10);
+    const isSoldOut = soldOut === true || soldOut === 'true' || parsedStock <= 0;
+
     // Create product
     const product = await Product.create({
       name,
@@ -226,8 +269,10 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       price: salePrice,
       originalPrice: resolvedOriginalPrice,
       category: category.toLowerCase(),
-      stock: parseInt(stock),
+      stock: isSoldOut ? 0 : parsedStock,
+      soldOut: isSoldOut,
       images,
+      colors: parsedColors,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       createdBy: req.user.id
     });
@@ -266,8 +311,9 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
     .withMessage('Price must be a positive number'),
   body('category')
     .optional()
-    .isIn(['hoodies', 'tees', 'jerseys', 'caps', 'accessories'])
-    .withMessage('Invalid category'),
+    .trim()
+    .notEmpty()
+    .withMessage('Category cannot be empty'),
   body('stock')
     .optional()
     .isInt({ min: 0 })
@@ -307,7 +353,25 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
       }
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut, colors } = req.body;
+
+    if (colors !== undefined) {
+      const parsedColors = parseColorsFromBody(colors);
+      if (parsedColors.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one available color is required',
+        });
+      }
+      product.colors = parsedColors;
+    }
+
+    if (category !== undefined && !(await isValidCategorySlug(category))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category — add it under Categories first',
+      });
+    }
 
     if (name !== undefined) product.name = name;
     if (description !== undefined) product.description = description;

@@ -152,16 +152,16 @@ export function useShopCheckout() {
       message?: string,
       options?: { delivery?: DeliveryDetails | null }
     ): { needsAuth?: true; needsDelivery?: true; missingDelivery?: true; ok?: true } => {
+      if (channel === 'paystack' && !isAuthenticated) {
+        return { needsAuth: true };
+      }
+
       if (channel === 'paystack' && !paystackEnabled) {
         sweetError(
           'Card payment unavailable',
-          'Paystack is not configured yet. Please checkout on WhatsApp.'
+          'Paystack is not configured yet. Please checkout on WhatsApp or sign in later.'
         );
         return {};
-      }
-
-      if (channel === 'paystack' && !isAuthenticated) {
-        return { needsAuth: true };
       }
 
       const delivery = resolveDelivery(options?.delivery);
@@ -187,7 +187,7 @@ export function useShopCheckout() {
 
       return { ok: true };
     },
-    [isAuthenticated, resolveDelivery, runWhatsAppCheckout, runPaystackCheckout]
+    [isAuthenticated, paystackEnabled, resolveDelivery, runWhatsAppCheckout, runPaystackCheckout]
   );
 
   const startWhatsAppCheckout = useCallback(

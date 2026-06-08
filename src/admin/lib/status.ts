@@ -1,19 +1,9 @@
-export const ORDER_STATUSES = [
-  'pending',
-  'confirmed',
-  'processing',
-  'shipped',
-  'delivered',
-  'cancelled',
-] as const;
+import { ORDER_STATUSES, ORDER_STATUS_LABEL } from '@/lib/order-status';
+
+export { ORDER_STATUSES };
 
 export const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  processing: 'Processing',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
+  ...ORDER_STATUS_LABEL,
   paid: 'Paid',
   unpaid: 'Unpaid',
 };

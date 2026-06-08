@@ -4,6 +4,9 @@ import AdminLayout from '../components/layout/AdminLayout';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminPanel from '../components/ui/AdminPanel';
 import AdminProductsTable from '../components/products/AdminProductsTable';
+import AdminCategoryField from '../components/products/AdminCategoryField';
+import AdminProductColorsField from '../components/products/AdminProductColorsField';
+import { useCategories } from '@/contexts/CategoriesContext';
 import ProductImagePicker, {
   type ProductImageEntry,
 } from '../components/products/ProductImagePicker';
@@ -11,12 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminConfirm } from '@/admin/contexts/AdminConfirmContext';
 import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
+import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
 import type { MongoProduct } from '../types/admin';
 import { cn } from '@/lib/utils';
-
-const CATEGORIES = ['hoodies', 'tees', 'jerseys', 'caps', 'accessories'] as const;
-const FILTER_CATS = ['all', ...CATEGORIES] as const;
 
 type FormState = {
   name: string;
@@ -26,6 +27,7 @@ type FormState = {
   category: string;
   stock: string;
   outOfStock: boolean;
+  colors: string[];
 };
 
 const emptyForm: FormState = {
@@ -33,9 +35,10 @@ const emptyForm: FormState = {
   description: '',
   price: '',
   discount: '',
-  category: 'tees',
-  stock: '0',
+  category: '',
+  stock: '1',
   outOfStock: false,
+  colors: [],
 };
 
 function discountFromProduct(product: MongoProduct) {
@@ -55,6 +58,7 @@ function productToForm(product: MongoProduct): FormState {
     category: product.category,
     stock: soldOut ? '0' : String(product.stock),
     outOfStock: soldOut,
+    colors: (product.colors || []).map((c) => c.name).filter(Boolean),
   };
 }
 
@@ -64,7 +68,9 @@ type ProductsContentProps = {
 
 const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
   const { token } = useAuth();
+  const { categories } = useCategories();
   const { confirm } = useAdminConfirm();
+  const filterCats = ['all', ...categories.map((c) => c.slug)];
   const [products, setProducts] = useState<MongoProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -107,6 +113,14 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    if (!categories.length) return;
+    setForm((f) => {
+      if (f.category && categories.some((c) => c.slug === f.category)) return f;
+      return { ...f, category: categories[0].slug };
+    });
+  }, [categories]);
+
   const resetForm = () => {
     productImages.forEach((img) => URL.revokeObjectURL(img.preview));
     setForm(emptyForm);
@@ -138,6 +152,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     fd.append('stock', form.outOfStock ? '0' : form.stock);
     fd.append('soldOut', form.outOfStock ? 'true' : 'false');
     if (form.discount.trim()) fd.append('discount', form.discount.trim());
+    fd.append('colors', JSON.stringify(form.colors.map((name) => ({ name }))));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,13 +164,25 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
       return;
     }
 
+    if (!form.category.trim()) {
+      setError('Select or add a category first');
+      return;
+    }
+
     if (mode === 'add' && productImages.length === 0) {
       setError('At least one image is required for new products');
       return;
     }
 
+    if (form.colors.length === 0) {
+      setError('Add at least one available color');
+      return;
+    }
+
     setSaving(true);
     setError('');
+    const savedName = form.name.trim();
+    const wasEdit = mode === 'edit';
     try {
       const fd = new FormData();
       appendFormFields(fd);
@@ -176,6 +203,11 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
 
       resetForm();
       loadProducts();
+      sweetSuccessCenter(
+        wasEdit ? 'Product updated' : 'Product saved',
+        `${savedName} is live in the shop.`
+      );
+      window.dispatchEvent(new CustomEvent('harv:catalog-changed'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
@@ -197,6 +229,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
       await apiFetch(`/api/products/${id}`, { method: 'DELETE', token });
       if (editingProduct?._id === id) resetForm();
       loadProducts();
+      window.dispatchEvent(new CustomEvent('harv:catalog-changed'));
     } catch {
       /* ignore */
     }
@@ -212,6 +245,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
         body: JSON.stringify(body),
       });
       await loadProducts();
+      window.dispatchEvent(new CustomEvent('harv:catalog-changed'));
     } finally {
       setUpdatingId(null);
     }
@@ -397,20 +431,14 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
                 Mark as out of stock / sold out
               </span>
             </label>
-            <label className="block">
-              <span className={ADMIN_LABEL}>Category *</span>
-              <select
-                className={ADMIN_INPUT}
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminCategoryField
+              value={form.category}
+              onChange={(slug) => setForm((f) => ({ ...f, category: slug }))}
+            />
+            <AdminProductColorsField
+              colors={form.colors}
+              onChange={(colors) => setForm((f) => ({ ...f, colors }))}
+            />
             <div className="flex flex-wrap gap-2">
               <button type="submit" disabled={saving} className={ADMIN_BTN}>
                 {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save product'}
@@ -434,7 +462,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
           className={ADMIN_INPUT}
         />
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
-          {FILTER_CATS.map((c) => (
+          {filterCats.map((c) => (
             <button
               key={c}
               type="button"
@@ -446,7 +474,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
                   : 'text-black/50 border-black/15 hover:border-black/30'
               )}
             >
-              {c}
+              {c === 'all' ? 'all' : categories.find((cat) => cat.slug === c)?.label ?? c}
             </button>
           ))}
         </div>

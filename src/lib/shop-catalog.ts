@@ -2,12 +2,6 @@ import { apiFetch } from '@/lib/api';
 import { productImageUrl } from '@/lib/productImage';
 import type { ShopProduct } from '@/data/products';
 
-let staticProducts: ShopProduct[] = [];
-
-export function initStaticCatalog(products: ShopProduct[]) {
-  staticProducts = products;
-}
-
 const CATALOG_ID_BASE = 1_000_000;
 
 type ApiProduct = {
@@ -20,8 +14,10 @@ type ApiProduct = {
   stock: number;
   soldOut?: boolean;
   isActive?: boolean;
+  createdAt?: string;
   images?: { front?: string; back?: string; additional?: string[] };
   sizes?: { name: string; stock?: number }[];
+  colors?: { name?: string; code?: string }[];
 };
 
 const mongoIdByCatalogId = new Map<number, string>();
@@ -41,7 +37,6 @@ function formatPrice(amount: number) {
 
 export function mapApiProductToShop(p: ApiProduct): ShopProduct | null {
   if (p.isActive === false) return null;
-  if (p.soldOut || p.stock <= 0) return null;
 
   const front = productImageUrl(p.images?.front);
   if (!front) return null;
@@ -71,12 +66,24 @@ export function mapApiProductToShop(p: ApiProduct): ShopProduct | null {
     backImage: back,
     images,
     category: p.category,
-    stock: p.stock,
+    stock: p.soldOut || p.stock <= 0 ? 0 : p.stock,
     sizes,
+    colors: (p.colors || []).map((c) => c.name?.trim()).filter((n): n is string => Boolean(n)),
     description: p.description || '',
     details: [],
     mongoId: p._id,
+    createdAt: p.createdAt,
   };
+}
+
+/** Newest admin products first */
+export function sortShopProductsNewestFirst(products: ShopProduct[]): ShopProduct[] {
+  return [...products].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) return bTime - aTime;
+    return b.id - a.id;
+  });
 }
 
 export type ShopProductWithMongo = ShopProduct & { mongoId?: string };
@@ -104,10 +111,9 @@ export function getApiCatalog(): ShopProduct[] {
   return apiCatalog;
 }
 
+/** Live catalog — admin/API products only */
 export function getMergedShopProducts(): ShopProduct[] {
-  const apiIds = new Set(apiCatalog.map((p) => p.id));
-  const staticOnly = staticProducts.filter((p) => !apiIds.has(p.id));
-  return [...apiCatalog, ...staticOnly];
+  return sortShopProductsNewestFirst(apiCatalog);
 }
 
 export function resolveProductById(id: number): ShopProduct | undefined {

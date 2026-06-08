@@ -7,12 +7,15 @@ import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import { useShopCatalog } from '@/contexts/ShopCatalogContext';
+import { useCategories } from '@/contexts/CategoriesContext';
+import { sortShopProductsNewestFirst } from '@/lib/shop-catalog';
 import { SHOP_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
 
 const Products = () => {
   const { products: shopProducts, loading: catalogLoading } = useShopCatalog();
+  const { categories } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
@@ -20,11 +23,11 @@ const Products = () => {
   const { cartCount } = useCart();
 
   useEffect(() => {
-    const validKeys = ['all', 'hoodies', 'tees', 'longsleeves', 'bottoms', 'jerseys', 'caps', 'accessories'];
-    if (validKeys.includes(categoryParam)) {
+    const validKeys = new Set(['all', ...categories.map((c) => c.slug)]);
+    if (validKeys.has(categoryParam)) {
       setSelectedCategory(categoryParam);
     }
-  }, [categoryParam]);
+  }, [categoryParam, categories]);
 
   const filteredProducts = (() => {
     const matched = shopProducts.filter((product) => {
@@ -39,7 +42,7 @@ const Products = () => {
 
     if (searchQuery) return matched;
 
-    return [...matched].sort((a, b) => b.id - a.id).slice(0, 16);
+    return sortShopProductsNewestFirst(matched);
   })();
 
   return (

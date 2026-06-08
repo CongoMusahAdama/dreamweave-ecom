@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { Minus, Plus, ChevronDown } from 'lucide-react';
 import type { ShopProduct } from '@/data/products';
 import type { DeliveryDetails } from '@/types/customer';
-import { COLOR_PREFERENCES, resolveColorPreference } from '@/lib/product-options';
+import {
+  getProductColorOptions,
+  productUsesCustomColorInput,
+  resolveColorPreference,
+} from '@/lib/product-options';
 import { isDeliveryComplete } from '@/lib/delivery';
 import DeliveryDetailsForm from '@/components/account/DeliveryDetailsForm';
 import CheckoutOptions from '@/components/shop/CheckoutOptions';
@@ -54,8 +58,9 @@ const ProductPurchasePanel = ({
   const { enabled: paystackEnabled } = usePaystack();
   const { addToCart, openCart } = useCart();
   const { size, quantity, colorChoice, colorCustom, delivery } = state;
+  const colorOptions = getProductColorOptions(product);
   const colorResolved = resolveColorPreference(colorChoice, colorCustom);
-  const needsCustomColor = colorChoice.includes('Other');
+  const needsCustomColor = productUsesCustomColorInput(product) && colorChoice.includes('Other');
   const canAddToCart = Boolean(size?.trim());
   const canCheckout = Boolean(size && colorChoice && (!needsCustomColor || colorCustom.trim()));
 
@@ -150,7 +155,7 @@ const ProductPurchasePanel = ({
               className={selectClass}
             >
               <option value="">Select</option>
-              {COLOR_PREFERENCES.map((c) => (
+              {colorOptions.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

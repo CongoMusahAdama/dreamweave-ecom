@@ -1,4 +1,4 @@
-/** Common color preferences when product has no fixed colorways in catalog */
+/** Fallback colors for legacy/static products without admin-defined colorways */
 export const COLOR_PREFERENCES = [
   'Black',
   'White',
@@ -7,6 +7,17 @@ export const COLOR_PREFERENCES = [
   'Navy',
   'Other (specify below)',
 ] as const;
+
+/** Colors shown at checkout — product-specific from admin, else generic fallback */
+export function getProductColorOptions(product: { colors?: string[] }): string[] {
+  const fromProduct = (product.colors || []).map((c) => c.trim()).filter(Boolean);
+  if (fromProduct.length > 0) return fromProduct;
+  return [...COLOR_PREFERENCES];
+}
+
+export function productUsesCustomColorInput(product: { colors?: string[] }): boolean {
+  return getProductColorOptions(product).some((c) => c.includes('Other'));
+}
 
 export const PAYSTACK_BRAND = {
   primary: '#00C3F7',

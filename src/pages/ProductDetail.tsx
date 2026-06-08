@@ -6,7 +6,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
-import { getCategoryLabel } from '@/data/products';
+import { useCategories } from '@/contexts/CategoriesContext';
 import { useShopCatalog } from '@/contexts/ShopCatalogContext';
 import { getProductGalleryImages, galleryImageLabel } from '@/lib/product-images';
 import ProductImageFlip from '@/components/shop/ProductImageFlip';
@@ -14,7 +14,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { buildSingleProductOrderMessage } from '@/lib/whatsapp';
 import { getDeliveryFromUser, isDeliveryComplete } from '@/lib/delivery';
-import { resolveColorPreference } from '@/lib/product-options';
+import { productUsesCustomColorInput, resolveColorPreference } from '@/lib/product-options';
 import WishlistButton from '@/components/shop/WishlistButton';
 import DeliveryDetailsModal from '@/components/account/DeliveryDetailsModal';
 import { useShopCheckout } from '@/hooks/useShopCheckout';
@@ -41,6 +41,7 @@ const ProductDetail = () => {
   const product = getProductById(productId);
   const { cartCount } = useCart();
   const { login, user, isAuthenticated } = useAuth();
+  const { getLabel: getCategoryLabel } = useCategories();
   const [selectedImage, setSelectedImage] = useState(0);
   const [authOpen, setAuthOpen] = useState(false);
   const [savingDelivery, setSavingDelivery] = useState(false);
@@ -91,7 +92,9 @@ const ProductDetail = () => {
   const canPurchase = Boolean(
     purchase.size &&
       purchase.colorChoice &&
-      (!purchase.colorChoice.includes('Other') || purchase.colorCustom.trim())
+      (!productUsesCustomColorInput(product) ||
+        !purchase.colorChoice.includes('Other') ||
+        purchase.colorCustom.trim())
   );
 
   const orderItems = () => [

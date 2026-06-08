@@ -5,7 +5,9 @@ import { Search, X, ChevronDown, Menu, Shield, User } from 'lucide-react';
 import AccountNavLink from '@/components/navigation/AccountNavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { shopLinks, pageLinks } from './nav-links';
+import { pageLinks } from './nav-links';
+import { useCategories } from '@/contexts/CategoriesContext';
+import { buildShopNavLinks } from '@/lib/categories';
 import { STICKY_NAV_CLASS, PAGE_X, NAV_LINK_BASE, navLinkClass } from '@/lib/page-layout';
 import { useCart } from '@/contexts/CartContext';
 import SiteLogo from '@/components/brand/SiteLogo';
@@ -17,6 +19,8 @@ interface HeaderProps {
 const Header = ({ variant = 'solid' }: HeaderProps) => {
   const { cartCount } = useCart();
   const { isAdmin } = useAuth();
+  const { categories } = useCategories();
+  const shopLinks = buildShopNavLinks(categories);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);

@@ -7,11 +7,11 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { shopProducts, type ShopProduct } from '@/data/products';
+import { useLocation } from 'react-router-dom';
+import type { ShopProduct } from '@/data/products';
 import {
   fetchApiCatalog,
   getMergedShopProducts,
-  initStaticCatalog,
   resolveProductById,
 } from '@/lib/shop-catalog';
 
@@ -24,9 +24,8 @@ type ShopCatalogContextValue = {
 
 const ShopCatalogContext = createContext<ShopCatalogContextValue | null>(null);
 
-initStaticCatalog(shopProducts);
-
 export function ShopCatalogProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const [apiLoaded, setApiLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +42,28 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const onCatalogChange = () => {
+      void refresh();
+    };
+    window.addEventListener('harv:catalog-changed', onCatalogChange);
+    return () => window.removeEventListener('harv:catalog-changed', onCatalogChange);
+  }, [refresh]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/products') {
+      void refresh();
+    }
+  }, [location.pathname, refresh]);
 
   const products = useMemo(() => getMergedShopProducts(), [apiLoaded, loading]);
 

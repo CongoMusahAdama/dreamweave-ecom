@@ -39,6 +39,7 @@ export interface MongoProduct {
   soldOut?: boolean;
   isActive?: boolean;
   images?: { front?: string; back?: string; additional?: string[] };
+  colors?: { name: string; code?: string }[];
   createdAt?: string;
   updatedAt?: string;
 }

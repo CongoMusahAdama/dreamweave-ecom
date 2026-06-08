@@ -56,6 +56,25 @@ const shopOrderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: 'pending',
   },
+  statusHistory: [{
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+      required: true,
+    },
+    changedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    note: {
+      type: String,
+      trim: true,
+    },
+  }],
 }, {
   timestamps: true,
 });

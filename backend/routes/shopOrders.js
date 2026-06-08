@@ -3,6 +3,10 @@ const { body, validationResult } = require('express-validator');
 const ShopOrder = require('../models/ShopOrder');
 const { protect, authorize } = require('../middleware/auth');
 const { validateShippingAddress } = require('../utils/validateShippingAddress');
+const {
+  queueAdminNewOrder,
+  queueCustomerStatusChange,
+} = require('../lib/orderNotifications');
 
 const router = express.Router();
 
@@ -88,7 +92,15 @@ router.post('/', protect, [
       totalAmount,
       channel,
       status: 'pending',
+      statusHistory: [{
+        status: 'pending',
+        changedAt: new Date(),
+        changedBy: req.user.id,
+        note: 'Order placed',
+      }],
     });
+
+    queueAdminNewOrder(order);
 
     res.status(201).json({
       success: true,
@@ -111,14 +123,24 @@ router.put('/:id/status', protect, authorize('admin'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
-    const order = await ShopOrder.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+    const order = await ShopOrder.findById(req.params.id);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const previousStatus = order.status;
+
+    if (order.status !== status) {
+      order.status = status;
+      order.statusHistory.push({
+        status,
+        changedAt: new Date(),
+        changedBy: req.user.id,
+        note: `Status updated to ${status}`,
+      });
+      await order.save();
+      queueCustomerStatusChange(order, previousStatus);
     }
 
     res.status(200).json({ success: true, data: { order } });

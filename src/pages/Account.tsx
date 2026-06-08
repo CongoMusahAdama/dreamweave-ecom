@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import ShopHeader from '@/components/navigation/ShopHeader';
 import Footer from '@/components/layout/Footer';
@@ -13,11 +13,19 @@ import SignOutConfirmDialog from '@/components/account/SignOutConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { apiFetch } from '@/lib/api';
-import { shopProducts } from '@/data/products';
+import { useShopCatalog } from '@/contexts/ShopCatalogContext';
 import type { ShopOrder } from '@/types/customer';
 import { mockShopOrders } from '@/data/mockOrders';
 import { ACCOUNT_ADMIN_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { cn } from '@/lib/utils';
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  orderStatusMessage,
+} from '@/lib/order-status';
+import { sweetInfo } from '@/lib/sweet-alert';
+
+const ORDERS_POLL_MS = 20_000;
 
 const SECTION_TITLE: Record<AccountSection, string> = {
   orders: 'Your orders',
@@ -28,6 +36,7 @@ const SECTION_TITLE: Record<AccountSection, string> = {
 const Account = () => {
   const { user, token, logout, refreshUser, isAdmin } = useAuth();
   const { cartCount } = useCart();
+  const { products: catalogProducts } = useShopCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const previewOrders = searchParams.get('previewOrders') === '1';
@@ -41,13 +50,17 @@ const Account = () => {
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const ordersSnapshotRef = useRef<Map<string, { status: string; paymentStatus?: string }>>(
+    new Map()
+  );
+  const ordersBootstrappedRef = useRef(false);
 
-  const wishlistProducts = shopProducts.filter((p) => user?.wishlist?.includes(p.id));
+  const wishlistProducts = catalogProducts.filter((p) => user?.wishlist?.includes(p.id));
 
   const loadOrders = useCallback(
-    async (page = 1) => {
+    async (page = 1, options?: { notify?: boolean; silent?: boolean }) => {
       if (!token) return;
-      setLoadingOrders(true);
+      if (!options?.silent) setLoadingOrders(true);
       try {
         const res = await apiFetch<{
           success: boolean;
@@ -56,7 +69,53 @@ const Account = () => {
             pagination: { page: number; limit: number; total: number; totalPages: number };
           };
         }>(`/api/shop-orders?page=${page}&limit=${ORDERS_PAGE_SIZE}`, { token });
-        setOrders(res.data.orders);
+
+        const nextOrders = res.data.orders;
+
+        if (!ordersBootstrappedRef.current) {
+          nextOrders.forEach((order) => {
+            ordersSnapshotRef.current.set(order._id, {
+              status: order.status,
+              paymentStatus: order.paymentStatus,
+            });
+          });
+          ordersBootstrappedRef.current = true;
+        } else if (options?.notify) {
+          nextOrders.forEach((order) => {
+            const prev = ordersSnapshotRef.current.get(order._id);
+            if (prev) {
+              if (prev.status !== order.status) {
+                sweetInfo(
+                  'Order status updated',
+                  `${order.orderNumber} is now ${ORDER_STATUS_LABEL[order.status] || order.status}. ${orderStatusMessage(order.status)}`
+                );
+              }
+              if (
+                order.paymentStatus &&
+                prev.paymentStatus &&
+                prev.paymentStatus !== order.paymentStatus
+              ) {
+                sweetInfo(
+                  'Payment updated',
+                  `${order.orderNumber}: ${PAYMENT_STATUS_LABEL[order.paymentStatus] || order.paymentStatus}.`
+                );
+              }
+            }
+            ordersSnapshotRef.current.set(order._id, {
+              status: order.status,
+              paymentStatus: order.paymentStatus,
+            });
+          });
+        } else {
+          nextOrders.forEach((order) => {
+            ordersSnapshotRef.current.set(order._id, {
+              status: order.status,
+              paymentStatus: order.paymentStatus,
+            });
+          });
+        }
+
+        setOrders(nextOrders);
         setOrdersPage(res.data.pagination.page);
         setOrdersTotal(res.data.pagination.total);
         setOrdersTotalPages(res.data.pagination.totalPages);
@@ -65,15 +124,38 @@ const Account = () => {
         setOrdersTotal(0);
         setOrdersTotalPages(1);
       } finally {
-        setLoadingOrders(false);
+        if (!options?.silent) setLoadingOrders(false);
       }
     },
     [token]
   );
 
   useEffect(() => {
+    ordersBootstrappedRef.current = false;
+    ordersSnapshotRef.current.clear();
+  }, [token]);
+
+  useEffect(() => {
     loadOrders(ordersPage);
   }, [loadOrders, ordersPage]);
+
+  useEffect(() => {
+    if (section !== 'orders' || !token) return;
+    const id = window.setInterval(() => {
+      void loadOrders(ordersPage, { notify: true, silent: true });
+    }, ORDERS_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [section, ordersPage, loadOrders, token]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && section === 'orders' && token) {
+        void loadOrders(ordersPage, { notify: true, silent: true });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [section, ordersPage, loadOrders, token]);
 
   useEffect(() => {
     const onPaid = () => {
@@ -96,8 +178,7 @@ const Account = () => {
     logout();
   };
 
-  const useMockOrders =
-    previewOrders || (import.meta.env.DEV && !loadingOrders && orders.length === 0);
+  const useMockOrders = previewOrders;
 
   const mockTotal = mockShopOrders.length;
   const mockTotalPages = Math.max(1, Math.ceil(mockTotal / ORDERS_PAGE_SIZE));
@@ -168,8 +249,8 @@ const Account = () => {
                 </h1>
                 {section === 'orders' && (
                   <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-black/45 mt-2 leading-relaxed max-w-lg">
-                    Track orders in the table below ({ORDERS_PAGE_SIZE} per page). Paystack orders
-                    show as Paid once payment succeeds.
+                    Track orders in the table below ({ORDERS_PAGE_SIZE} per page). Status updates
+                    from HARV appear here automatically — confirmed, shipped, delivered, and more.
                     {paidCount > 0 && (
                       <span className="text-black"> · {paidCount} paid</span>
                     )}

@@ -17,7 +17,10 @@ const shopOrderRoutes = require('./routes/shopOrders');
 const paymentRoutes = require('./routes/payments');
 const paystackWebhookHandler = paymentRoutes.paystackWebhookHandler;
 const { isPaystackConfigured } = require('./lib/paystack');
+const { isBrevoConfigured } = require('./lib/brevo');
 const galleryRoutes = require('./routes/gallery');
+const categoryRoutes = require('./routes/categories');
+const { ensureDefaultCategories } = require('./lib/categories');
 
 const app = express();
 
@@ -93,6 +96,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/shop-orders', shopOrderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -162,11 +166,17 @@ async function warnIfCloudinaryMisconfigured() {
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB');
+    await ensureDefaultCategories();
     await warnIfCloudinaryMisconfigured();
     if (isPaystackConfigured()) {
       console.log('✅ Paystack configured (card checkout enabled)');
     } else {
       console.warn('⚠️  Paystack keys missing — add PAYSTACK_PUBLIC_KEY and PAYSTACK_SECRET_KEY to backend/.env');
+    }
+    if (isBrevoConfigured()) {
+      console.log('✅ Brevo configured (order email & SMS notifications enabled)');
+    } else {
+      console.warn('⚠️  Brevo not configured — add BREVO_API_KEY and BREVO_SENDER_EMAIL to backend/.env');
     }
 
     // Start server

@@ -62,6 +62,21 @@ export function sweetSuccess(title: string, description?: string) {
   showAlert('success', title, description);
 }
 
+/** Centered success alert — e.g. admin saves */
+export function sweetSuccessCenter(title: string, description?: string) {
+  toast.custom(
+    () => (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pointer-events-none">
+        <div className="absolute inset-0 bg-black/10 animate-in fade-in duration-300" aria-hidden />
+        <div className="relative pointer-events-auto animate-in zoom-in-95 fade-in duration-300 shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
+          <AlertCard title={title} description={description} variant="success" />
+        </div>
+      </div>
+    ),
+    { duration: ALERT_DURATION, position: 'top-center' }
+  );
+}
+
 export function sweetError(title: string, description?: string) {
   showAlert('error', title, description);
 }

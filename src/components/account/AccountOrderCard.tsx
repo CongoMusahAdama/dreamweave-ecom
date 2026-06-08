@@ -4,20 +4,11 @@ import { getProductById } from '@/data/products';
 import { cn } from '@/lib/utils';
 import { openWhatsApp, buildOrderFollowUpMessage } from '@/lib/whatsapp';
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  processing: 'Processing',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
-
-const PAYMENT_LABEL: Record<string, string> = {
-  paid: 'Paid',
-  pending: 'Awaiting payment',
-  failed: 'Failed',
-};
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  orderStatusBadgeClass,
+} from '@/lib/order-status';
 
 type AccountOrderCardProps = {
   order: ShopOrder;
@@ -36,7 +27,7 @@ function paymentDisplay(order: ShopOrder) {
   if (order.channel === 'paystack') {
     const ps = order.paymentStatus || 'pending';
     return {
-      label: PAYMENT_LABEL[ps] || ps,
+      label: PAYMENT_STATUS_LABEL[ps] || ps,
       paid: ps === 'paid',
       pending: ps === 'pending',
       failed: ps === 'failed',
@@ -107,8 +98,13 @@ const AccountOrderCard = ({ order, onViewDelivery }: AccountOrderCardProps) => {
         >
           {payment.label}
         </span>
-        <span className="text-[9px] font-bold tracking-[0.1em] uppercase px-2.5 py-1.5 border border-black/15 text-black">
-          {STATUS_LABEL[order.status] || order.status}
+        <span
+          className={cn(
+            'text-[9px] font-bold tracking-[0.1em] uppercase px-2.5 py-1.5 border',
+            orderStatusBadgeClass(order.status)
+          )}
+        >
+          {ORDER_STATUS_LABEL[order.status] || order.status}
         </span>
       </div>
 
@@ -119,7 +115,7 @@ const AccountOrderCard = ({ order, onViewDelivery }: AccountOrderCardProps) => {
           className="inline-flex items-center justify-center gap-2 border border-black/20 py-3 min-h-[48px] text-[9px] font-bold tracking-[0.12em] uppercase active:bg-black/[0.04]"
         >
           <MapPin className="w-4 h-4 shrink-0" />
-          Delivery
+          Details
         </button>
         <button
           type="button"

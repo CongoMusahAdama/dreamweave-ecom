@@ -30,18 +30,15 @@ const CheckoutOptions = ({
 
   return (
     <div className={cn('space-y-4', className)}>
-      {isAuthenticated && paystackEnabled ? (
+      {isAuthenticated ? (
         <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black/50 leading-[1.7]">
-          Choose how you&apos;d like to pay — WhatsApp or secure card payment via Paystack.
+          {paystackEnabled
+            ? "Choose how you'd like to pay — WhatsApp or secure card payment via Paystack."
+            : 'Checkout on WhatsApp — card payment via Paystack will be enabled once keys are added.'}
         </p>
       ) : (
         <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-black/50 leading-[1.7]">
-          Checkout on WhatsApp — no account needed.
-          {!paystackEnabled && isAuthenticated
-            ? ' Card payment will be available once Paystack is configured.'
-            : !isAuthenticated
-              ? ' Sign in to unlock card payment with Paystack.'
-              : null}
+          Checkout on WhatsApp — no account needed. Sign in to unlock card payment with Paystack.
         </p>
       )}
 

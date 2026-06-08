@@ -10,6 +10,11 @@ const {
   verifyWebhookSignature,
   verifyTransactionReference,
 } = require('../lib/paystack');
+const {
+  queueAdminNewOrder,
+  queueAdminPaymentReceived,
+  queueCustomerStatusChange,
+} = require('../lib/orderNotifications');
 
 const router = express.Router();
 
@@ -80,7 +85,15 @@ router.post('/initialize', protect, [
       channel: 'paystack',
       status: 'pending',
       paymentStatus: 'pending',
+      statusHistory: [{
+        status: 'pending',
+        changedAt: new Date(),
+        changedBy: req.user.id,
+        note: 'Paystack checkout started',
+      }],
     });
+
+    queueAdminNewOrder(order);
 
     const reference = `HD-${order._id}-${Date.now()}`;
     const callbackUrl = `${frontendBaseUrl()}/payment/callback`;

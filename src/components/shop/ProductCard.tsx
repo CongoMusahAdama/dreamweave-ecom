@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { getCategoryLabel, type ShopProduct } from '@/data/products';
+import type { ShopProduct } from '@/data/products';
+import { useCategories } from '@/contexts/CategoriesContext';
 import { getProductGalleryImages } from '@/lib/product-images';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import WishlistButton from '@/components/shop/WishlistButton';
@@ -12,6 +13,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
+  const { getLabel: getCategoryLabel } = useCategories();
   const isSoldOut = product.stock === 0;
   const staggerDelay = Math.min(index * 70, 560);
   const gallery = getProductGalleryImages(product);

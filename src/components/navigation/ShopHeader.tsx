@@ -4,7 +4,9 @@ import { ChevronDown, Menu, Shield, User } from 'lucide-react';
 import AccountNavLink from '@/components/navigation/AccountNavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { shopLinks, pageLinks } from './nav-links';
+import { pageLinks } from './nav-links';
+import { useCategories } from '@/contexts/CategoriesContext';
+import { buildShopNavLinks } from '@/lib/categories';
 import { STICKY_NAV_CLASS, NAV_LINK_BASE, navLinkClass } from '@/lib/page-layout';
 import SiteLogo from '@/components/brand/SiteLogo';
 
@@ -14,6 +16,8 @@ interface ShopHeaderProps {
 
 const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
   const { isAdmin } = useAuth();
+  const { categories } = useCategories();
+  const shopLinks = buildShopNavLinks(categories);
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);

@@ -46,6 +46,13 @@ export interface ShopOrderItem {
   colorPreference?: string;
 }
 
+export interface OrderStatusHistoryEntry {
+  status: string;
+  changedAt: string;
+  changedBy?: string;
+  note?: string;
+}
+
 export interface ShopOrder {
   _id: string;
   orderNumber: string;
@@ -59,6 +66,7 @@ export interface ShopOrder {
   channel: string;
   paymentStatus?: 'pending' | 'paid' | 'failed';
   paystackReference?: string;
+  statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;
   updatedAt: string;
 }

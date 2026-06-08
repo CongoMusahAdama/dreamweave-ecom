@@ -1,5 +1,9 @@
 const crypto = require('crypto');
 const ShopOrder = require('../models/ShopOrder');
+const {
+  queueAdminPaymentReceived,
+  queueCustomerStatusChange,
+} = require('./orderNotifications');
 
 function isPaystackConfigured() {
   return Boolean(process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_PUBLIC_KEY);
@@ -41,11 +45,24 @@ async function markOrderPaidByReference(reference) {
   if (!order) return null;
   if (order.paymentStatus === 'paid') return order;
 
+  const previousStatus = order.status;
+
   order.paymentStatus = 'paid';
   if (order.status === 'pending') {
     order.status = 'confirmed';
+    order.statusHistory.push({
+      status: 'confirmed',
+      changedAt: new Date(),
+      note: 'Payment received via Paystack',
+    });
   }
   await order.save();
+
+  queueAdminPaymentReceived(order);
+  if (previousStatus !== order.status) {
+    queueCustomerStatusChange(order, previousStatus);
+  }
+
   return order;
 }
 
