@@ -247,6 +247,7 @@ const CartView = () => {
           setAuthOpen(false);
         }}
         initialMode={authMode}
+        stayOnPage
       />
     </>
   );

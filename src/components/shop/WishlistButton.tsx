@@ -99,6 +99,7 @@ const WishlistButton = ({ productId, className, size = 'md' }: WishlistButtonPro
         }}
         onSuccess={handleAuthSuccess}
         initialMode="register"
+        stayOnPage
       />
     </>
   );

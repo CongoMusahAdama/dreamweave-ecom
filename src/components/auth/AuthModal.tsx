@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,8 @@ interface AuthModalProps {
   onClose: () => void;
   onSuccess: (token: string, user: any) => void | Promise<void>;
   initialMode?: 'login' | 'register';
+  /** When true, stay on current page (checkout, wishlist). Default: go to account/admin after auth */
+  stayOnPage?: boolean;
 }
 
 const emptyForm = {
@@ -27,7 +30,18 @@ function getApiErrorMessage(data: { message?: string; errors?: { msg: string }[]
   return fallback;
 }
 
-const AuthModal = ({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) => {
+function dashboardPathForUser(user: { role?: string }) {
+  return user?.role === 'admin' ? '/admin' : '/account';
+}
+
+const AuthModal = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialMode = 'login',
+  stayOnPage = false,
+}: AuthModalProps) => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -116,10 +130,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthMo
         throw new Error(getApiErrorMessage(data, 'Authentication failed'));
       }
 
-      await onSuccess(data.data.token, data.data.user);
+      const authedUser = data.data.user;
+      await onSuccess(data.data.token, authedUser);
       sweetAuthSuccess(isLogin ? 'login' : 'register');
       onClose();
       setFormData(emptyForm);
+      if (!stayOnPage) {
+        navigate(dashboardPathForUser(authedUser), { replace: true });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
       setError(message);

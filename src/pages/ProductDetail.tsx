@@ -287,6 +287,7 @@ const ProductDetail = () => {
           setAuthOpen(false);
         }}
         initialMode="login"
+        stayOnPage
       />
 
       <DeliveryDetailsModal

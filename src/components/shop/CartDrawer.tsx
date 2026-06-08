@@ -175,6 +175,7 @@ const CartDrawer = () => {
           setAuthOpen(false);
         }}
         initialMode="login"
+        stayOnPage
       />
     </>
   );

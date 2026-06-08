@@ -33,7 +33,9 @@ const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
   }, []);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
-  const isShopActive = true;
+  const isShopActive =
+    location.pathname === '/products' || location.pathname.startsWith('/products/');
+  const isAccountActive = location.pathname === '/account';
 
   useEffect(() => {
     setIsShopOpen(false);
@@ -151,8 +153,15 @@ const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
           ))}
 
           <Link
+            to={isAdmin ? '/admin' : '/account'}
+            className={cn(NAV_LINK_BASE, navLinkClass(isAccountActive))}
+          >
+            {isAdmin ? 'Admin' : 'My account'}
+          </Link>
+
+          <Link
             to="/"
-            className={cn(NAV_LINK_BASE, navLinkClass(false))}
+            className={cn(NAV_LINK_BASE, navLinkClass(location.pathname === '/'))}
           >
             Home
           </Link>
