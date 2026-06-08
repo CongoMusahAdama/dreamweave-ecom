@@ -7,7 +7,7 @@ import AdminSingleImagePicker from '../components/ui/AdminSingleImagePicker';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminConfirm } from '@/admin/contexts/AdminConfirmContext';
 import { apiFetch } from '@/lib/api';
-import { productImageUrl } from '@/lib/productImage';
+import { isLegacyLocalUpload, productImageUrl } from '@/lib/productImage';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
 import type { GalleryItem } from '../types/admin';
 
@@ -206,6 +206,11 @@ const GalleryContent = () => {
                 <p className="text-[8px] font-bold uppercase text-black/40 mt-0.5">
                   {item.category}
                 </p>
+                {isLegacyLocalUpload(item.image) && (
+                  <p className="text-[8px] font-bold uppercase text-amber-800 bg-amber-50 border border-amber-200 px-2 py-1 mt-2">
+                    Image missing — delete and re-upload
+                  </p>
+                )}
               </div>
               <button
                 type="button"

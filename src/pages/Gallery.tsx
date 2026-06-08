@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
-import { productImageUrl } from '@/lib/productImage';
+import { isLegacyLocalUpload, productImageUrl } from '@/lib/productImage';
 import Header from '@/components/navigation/Header';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
@@ -75,17 +75,23 @@ const Gallery = () => {
       data: { items: { _id: string; name: string; image: string; category: string; caption?: string }[] };
     }>('/api/gallery')
       .then((res) => {
-        if (res.data.items.length > 0) {
-          setLifestyleImages(
-            res.data.items.map((item, i) => ({
-              id: i + 1,
-              name: item.name,
-              image: productImageUrl(item.image),
-              category: item.category,
-              caption: item.caption || '',
-            }))
-          );
-        }
+        const apiItems = res.data.items
+          .filter((item) => item.image && !isLegacyLocalUpload(item.image))
+          .map((item, i) => ({
+            id: 1000 + i,
+            name: item.name,
+            image: productImageUrl(item.image),
+            category: item.category,
+            caption: item.caption || '',
+          }));
+
+        if (apiItems.length === 0) return;
+
+        const apiNames = new Set(apiItems.map((item) => item.name.toLowerCase()));
+        const staticFallback = STATIC_GALLERY.filter(
+          (item) => !apiNames.has(item.name.toLowerCase())
+        );
+        setLifestyleImages([...apiItems, ...staticFallback]);
       })
       .catch(() => {
         /* keep static fallback */

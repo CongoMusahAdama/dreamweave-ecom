@@ -52,3 +52,10 @@ export function productImageUrl(path?: string | null) {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   return normalized;
 }
+
+/** Legacy /uploads URLs stored before Cloudinary — often missing on Netlify */
+export function isLegacyLocalUpload(path?: string | null) {
+  if (!path) return false;
+  if (path.startsWith('https://res.cloudinary.com/')) return false;
+  return /\/uploads\//.test(productImageUrl(path));
+}
