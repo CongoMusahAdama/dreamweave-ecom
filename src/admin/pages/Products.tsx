@@ -6,6 +6,8 @@ import AdminPanel from '../components/ui/AdminPanel';
 import AdminProductsTable from '../components/products/AdminProductsTable';
 import AdminCategoryField from '../components/products/AdminCategoryField';
 import AdminProductColorsField from '../components/products/AdminProductColorsField';
+import AdminProductSizesField from '../components/products/AdminProductSizesField';
+import { DEFAULT_PRODUCT_SIZES } from '@/lib/product-sizes';
 import { useCategories } from '@/contexts/CategoriesContext';
 import ProductImagePicker, {
   type ProductImageEntry,
@@ -28,6 +30,7 @@ type FormState = {
   stock: string;
   outOfStock: boolean;
   colors: string[];
+  sizes: string[];
 };
 
 const emptyForm: FormState = {
@@ -39,6 +42,7 @@ const emptyForm: FormState = {
   stock: '1',
   outOfStock: false,
   colors: [],
+  sizes: [...DEFAULT_PRODUCT_SIZES],
 };
 
 function discountFromProduct(product: MongoProduct) {
@@ -59,6 +63,10 @@ function productToForm(product: MongoProduct): FormState {
     stock: soldOut ? '0' : String(product.stock),
     outOfStock: soldOut,
     colors: (product.colors || []).map((c) => c.name).filter(Boolean),
+    sizes:
+      (product.sizes || []).map((s) => s.name).filter(Boolean).length > 0
+        ? (product.sizes || []).map((s) => s.name).filter(Boolean)
+        : [...DEFAULT_PRODUCT_SIZES],
   };
 }
 
@@ -153,6 +161,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     fd.append('soldOut', form.outOfStock ? 'true' : 'false');
     if (form.discount.trim()) fd.append('discount', form.discount.trim());
     fd.append('colors', JSON.stringify(form.colors.map((name) => ({ name }))));
+    fd.append('sizes', JSON.stringify(form.sizes.map((name) => ({ name }))));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,6 +185,11 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
 
     if (form.colors.length === 0) {
       setError('Add at least one available color');
+      return;
+    }
+
+    if (form.sizes.length === 0) {
+      setError('Select at least one available size');
       return;
     }
 
@@ -434,6 +448,10 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
             <AdminCategoryField
               value={form.category}
               onChange={(slug) => setForm((f) => ({ ...f, category: slug }))}
+            />
+            <AdminProductSizesField
+              sizes={form.sizes}
+              onChange={(sizes) => setForm((f) => ({ ...f, sizes }))}
             />
             <AdminProductColorsField
               colors={form.colors}

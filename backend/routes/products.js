@@ -51,6 +51,31 @@ async function buildImagesFromUploads(files, rolesInput) {
   return images;
 }
 
+const ALLOWED_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']);
+
+function parseSizesFromBody(sizesInput, stock = 0) {
+  if (!sizesInput) return [];
+  try {
+    const parsed = typeof sizesInput === 'string' ? JSON.parse(sizesInput) : sizesInput;
+    if (!Array.isArray(parsed)) return [];
+
+    const names = parsed
+      .map((entry) => {
+        if (typeof entry === 'string') return entry.trim();
+        if (entry?.name) return String(entry.name).trim();
+        return '';
+      })
+      .filter((name) => ALLOWED_SIZES.has(name));
+
+    return [...new Set(names)].map((name) => ({
+      name,
+      stock: Math.max(0, Number(stock) || 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 function parseColorsFromBody(colorsInput) {
   if (!colorsInput) return [];
   try {
@@ -256,8 +281,11 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       });
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles, soldOut, colors } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, imageRoles, soldOut, colors, sizes } = req.body;
     const parsedColors = parseColorsFromBody(colors);
+    const parsedStock = parseInt(stock, 10);
+    const isSoldOut = soldOut === true || soldOut === 'true' || parsedStock <= 0;
+    const parsedSizes = parseSizesFromBody(sizes, isSoldOut ? 0 : parsedStock);
 
     if (!(await isValidCategorySlug(category))) {
       return res.status(400).json({
@@ -272,6 +300,14 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
         message: 'At least one available color is required',
       });
     }
+
+    if (parsedSizes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one available size is required',
+      });
+    }
+
     const files = req.files?.length ? req.files : req.file ? [req.file] : [];
 
     if (!files.length) {
@@ -297,9 +333,6 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       resolvedOriginalPrice = undefined;
     }
 
-    const parsedStock = parseInt(stock, 10);
-    const isSoldOut = soldOut === true || soldOut === 'true' || parsedStock <= 0;
-
     // Create product
     const product = await Product.create({
       name,
@@ -311,6 +344,7 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       soldOut: isSoldOut,
       images,
       colors: parsedColors,
+      sizes: parsedSizes,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       createdBy: req.user.id
     });
@@ -391,7 +425,7 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
       }
     }
 
-    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut, colors } = req.body;
+    const { name, description, price, category, stock, originalPrice, discount, tags, soldOut, colors, sizes } = req.body;
 
     if (colors !== undefined) {
       const parsedColors = parseColorsFromBody(colors);
@@ -402,6 +436,19 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
         });
       }
       product.colors = parsedColors;
+    }
+
+    if (sizes !== undefined) {
+      const stockForSizes =
+        stock !== undefined ? parseInt(stock, 10) : product.stock;
+      const parsedSizes = parseSizesFromBody(sizes, stockForSizes);
+      if (parsedSizes.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one available size is required',
+        });
+      }
+      product.sizes = parsedSizes;
     }
 
     if (category !== undefined && !(await isValidCategorySlug(category))) {
@@ -440,6 +487,12 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
       product.stock = parseInt(stock, 10);
       if (product.stock > 0 && soldOut !== 'true' && soldOut !== true) {
         product.soldOut = false;
+      }
+      if (product.sizes?.length) {
+        product.sizes = product.sizes.map((entry) => ({
+          name: entry.name,
+          stock: product.stock,
+        }));
       }
     }
 

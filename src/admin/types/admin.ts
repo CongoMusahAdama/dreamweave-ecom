@@ -40,6 +40,7 @@ export interface MongoProduct {
   isActive?: boolean;
   images?: { front?: string; back?: string; additional?: string[] };
   colors?: { name: string; code?: string }[];
+  sizes?: { name: string; stock?: number }[];
   createdAt?: string;
   updatedAt?: string;
 }
