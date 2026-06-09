@@ -92,7 +92,12 @@ const AuthModal = ({
       return false;
     }
 
-    if (!isLogin && formData.phone && !/^\+?[\d\s-()]{7,20}$/.test(formData.phone.trim())) {
+    if (!isLogin && !formData.phone?.trim()) {
+      setError('Please enter your phone number');
+      return false;
+    }
+
+    if (!isLogin && !/^\+?[\d\s-()]{7,20}$/.test(formData.phone.trim())) {
       setError('Please enter a valid phone number');
       return false;
     }
@@ -116,7 +121,7 @@ const AuthModal = ({
             name: formData.name.trim(),
             email: formData.email.trim(),
             password: formData.password,
-            ...(formData.phone.trim() ? { phone: formData.phone.trim() } : {}),
+            phone: formData.phone.trim(),
           };
 
       const data = await apiFetch<{
@@ -223,7 +228,7 @@ const AuthModal = ({
           {!isLogin && (
             <div>
               <Label htmlFor="phone" className="text-[10px] font-bold tracking-[0.15em] uppercase text-black/60">
-                Phone (optional)
+                Phone *
               </Label>
               <div className="relative mt-1">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/30" />
@@ -236,10 +241,11 @@ const AuthModal = ({
                   placeholder="+233 20 123 4567"
                   className="pl-10 rounded-none border-black"
                   autoComplete="tel"
+                  required
                 />
               </div>
               <p className="text-[9px] font-bold text-black/40 mt-1.5 leading-relaxed">
-                Skip for now — add or update your number anytime under Account → Profile.
+                Used for order updates and your welcome SMS.
               </p>
             </div>
           )}

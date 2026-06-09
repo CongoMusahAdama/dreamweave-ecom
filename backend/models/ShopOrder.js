@@ -57,6 +57,11 @@ const shopOrderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: 'pending',
   },
+  /** Prevents double stock deduction when webhook and verify both run */
+  stockDeducted: {
+    type: Boolean,
+    default: false,
+  },
   statusHistory: [{
     status: {
       type: String,

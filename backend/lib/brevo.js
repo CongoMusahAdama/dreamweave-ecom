@@ -19,11 +19,6 @@ function sender() {
   };
 }
 
-function smsSender() {
-  const raw = process.env.BREVO_SMS_SENDER || 'HARV';
-  return raw.slice(0, 11);
-}
-
 async function brevoRequest(path, options = {}) {
   if (!isBrevoConfigured()) {
     const err = new Error('Brevo is not configured');
@@ -65,22 +60,7 @@ async function sendTransactionalEmail({ to, subject, htmlContent, textContent })
   });
 }
 
-async function sendTransactionalSms({ recipient, content }) {
-  if (!recipient) return { skipped: true, reason: 'no_phone' };
-
-  return brevoRequest('/transactionalSMS/send', {
-    method: 'POST',
-    body: {
-      sender: smsSender(),
-      recipient,
-      content,
-      type: 'transactional',
-    },
-  });
-}
-
 module.exports = {
   isBrevoConfigured,
   sendTransactionalEmail,
-  sendTransactionalSms,
 };

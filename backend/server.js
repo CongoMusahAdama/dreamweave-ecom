@@ -18,6 +18,7 @@ const paymentRoutes = require('./routes/payments');
 const paystackWebhookHandler = paymentRoutes.paystackWebhookHandler;
 const { isPaystackConfigured } = require('./lib/paystack');
 const { isBrevoConfigured } = require('./lib/brevo');
+const { isMnotifyConfigured } = require('./lib/mnotify');
 const galleryRoutes = require('./routes/gallery');
 const categoryRoutes = require('./routes/categories');
 const settingsRoutes = require('./routes/settings');
@@ -197,9 +198,14 @@ mongoose.connect(process.env.MONGODB_URI, {
       console.warn('⚠️  Paystack keys missing — add PAYSTACK_PUBLIC_KEY and PAYSTACK_SECRET_KEY to backend/.env');
     }
     if (isBrevoConfigured()) {
-      console.log('✅ Brevo configured (order email & SMS notifications enabled)');
+      console.log('✅ Brevo configured (transactional email enabled)');
     } else {
       console.warn('⚠️  Brevo not configured — add BREVO_API_KEY and BREVO_SENDER_EMAIL to backend/.env');
+    }
+    if (isMnotifyConfigured()) {
+      console.log('✅ Mnotify configured (transactional SMS enabled)');
+    } else {
+      console.warn('⚠️  Mnotify not configured — add MNOTIFY_API_KEY and MNOTIFY_SENDER_ID to backend/.env');
     }
 
     // Start server

@@ -1,8 +1,10 @@
+const crypto = require('crypto');
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { isValidPhoneInput } = require('../lib/phone');
+const { queueWelcomeSms } = require('../lib/accountNotifications');
 
 const router = express.Router();
 
@@ -35,12 +37,12 @@ router.post('/register', [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
   body('phone')
-    .optional({ values: 'falsy' })
     .trim()
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isLength({ min: 7, max: 20 })
     .withMessage('Please provide a valid phone number')
     .custom((value) => {
-      const { isValidPhoneInput } = require('../lib/phone');
       if (!isValidPhoneInput(value)) {
         throw new Error('Please provide a valid phone number');
       }
@@ -79,6 +81,8 @@ router.post('/register', [
 
     // Generate token
     const token = user.getSignedJwtToken();
+
+    queueWelcomeSms(user);
 
     res.status(201).json({
       success: true,
@@ -368,6 +372,74 @@ router.post('/wishlist/:productId', protect, async (req, res) => {
   } catch (error) {
     console.error('Wishlist toggle error:', error);
     res.status(500).json({ success: false, message: 'Error updating wishlist' });
+  }
+});
+
+// @desc    Delete customer account (anonymize — orders are kept for records)
+// @route   DELETE /api/auth/account
+// @access  Private (customers only)
+router.delete('/account', protect, [
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required to delete your account'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+        errors: errors.array(),
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin accounts cannot be deleted from the customer dashboard',
+      });
+    }
+
+    const isMatch = await user.matchPassword(req.body.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Incorrect password',
+      });
+    }
+
+    const deletedId = user._id.toString();
+    user.name = 'Deleted User';
+    user.email = `deleted_${deletedId}@deleted.harv.local`;
+    user.phone = undefined;
+    user.addresses = [];
+    user.wishlist = [];
+    user.avatar = '';
+    user.isActive = false;
+    user.phoneVerified = false;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    user.password = crypto.randomBytes(32).toString('hex');
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Your account has been deleted',
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting account',
+    });
   }
 });
 

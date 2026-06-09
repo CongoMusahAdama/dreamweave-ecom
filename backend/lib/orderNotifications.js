@@ -1,8 +1,9 @@
-const User = require('../models/User');
 const ShopOrder = require('../models/ShopOrder');
-const { isBrevoConfigured, sendTransactionalEmail, sendTransactionalSms } = require('./brevo');
+const { isBrevoConfigured, sendTransactionalEmail } = require('./brevo');
+const { isMnotifyConfigured, sendTransactionalSms } = require('./mnotify');
 const { harvEmailLayout } = require('./emailTemplate');
-const { normalizePhoneForSms } = require('./phone');
+const { formatPhoneForMnotify } = require('./phone');
+const { publicSiteUrl } = require('./publicSiteUrl');
 
 const STATUS_LABEL = {
   pending: 'Pending',
@@ -22,8 +23,30 @@ const STATUS_SMS = {
   cancelled: 'Your order was cancelled. Contact us if you need help.',
 };
 
+const CHANNEL_LABEL = {
+  whatsapp: 'WhatsApp',
+  paystack: 'Paystack',
+  web: 'Web',
+};
+
 function adminNotifyEmail() {
   return process.env.ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL || null;
+}
+
+function adminNotifyPhone() {
+  return process.env.ADMIN_NOTIFY_PHONE || null;
+}
+
+function adminOrdersUrl() {
+  return `${publicSiteUrl()}/admin/orders`;
+}
+
+function accountUrl() {
+  return `${publicSiteUrl()}/account`;
+}
+
+function channelLabel(channel) {
+  return CHANNEL_LABEL[channel] || channel || 'Web';
 }
 
 function formatGhs(amount) {
@@ -87,8 +110,8 @@ async function safeSend(label, fn) {
   try {
     await fn();
   } catch (err) {
-    if (err.code === 'BREVO_NOT_CONFIGURED') {
-      console.warn(`[notify] ${label} skipped — Brevo not configured`);
+    if (err.code === 'BREVO_NOT_CONFIGURED' || err.code === 'MNOTIFY_NOT_CONFIGURED') {
+      console.warn(`[notify] ${label} skipped — provider not configured`);
       return;
     }
     console.error(`[notify] ${label} failed:`, err.message);
@@ -97,50 +120,54 @@ async function safeSend(label, fn) {
 
 /** Admin email when any new order is placed (WhatsApp or Paystack checkout started) */
 async function notifyAdminNewOrder(orderOrId) {
-  if (!isBrevoConfigured()) return;
+  const order = await loadOrder(orderOrId);
+  if (!order) return;
 
-  await safeSend('admin new order', async () => {
-    const order = await loadOrder(orderOrId);
-    const to = adminNotifyEmail();
-    if (!order || !to) return;
+  const channel = channelLabel(order.channel);
+  const payment =
+    order.channel === 'paystack'
+      ? order.paymentStatus === 'paid'
+        ? 'Paid'
+        : 'Awaiting Paystack payment'
+      : 'Awaiting payment (confirm after customer pays)';
 
-    const channel = order.channel === 'paystack' ? 'Paystack' : 'WhatsApp';
-    const payment =
-      order.channel === 'paystack'
-        ? order.paymentStatus === 'paid'
-          ? 'Paid'
-          : 'Awaiting Paystack payment'
-        : 'Awaiting payment (confirm after customer pays)';
+  if (isBrevoConfigured()) {
+    await safeSend('admin new order email', async () => {
+      const to = adminNotifyEmail();
+      if (!to) return;
 
-    const subject = `New ${channel} order — ${order.orderNumber}`;
-    const text = [
-      `New order on HARV DREAMS`,
-      ``,
-      `Order: ${order.orderNumber}`,
-      `Order ID: ${order._id}`,
-      `Channel: ${channel}`,
-      `Payment: ${payment}`,
-      `Total: ${formatGhs(order.totalAmount)}`,
-      `Status: ${STATUS_LABEL[order.status] || order.status}`,
-      ``,
-      `Customer: ${customerName(order)}`,
-      `Email: ${customerEmail(order) || '—'}`,
-      `Phone: ${customerPhone(order) || '—'}`,
-      ``,
-      `Items:`,
-      itemsText(order.items),
-      ``,
-      `Delivery / pickup:`,
-      deliveryText(order.shippingAddress),
-    ].join('\n');
+      const subject = `New ${channel} order — ${order.orderNumber}`;
+      const text = [
+        `New order on HARV DREAMS`,
+        ``,
+        `Order: ${order.orderNumber}`,
+        `Order ID: ${order._id}`,
+        `Channel: ${channel}`,
+        `Payment: ${payment}`,
+        `Total: ${formatGhs(order.totalAmount)}`,
+        `Status: ${STATUS_LABEL[order.status] || order.status}`,
+        ``,
+        `Customer: ${customerName(order)}`,
+        `Email: ${customerEmail(order) || '—'}`,
+        `Phone: ${customerPhone(order) || '—'}`,
+        ``,
+        `Items:`,
+        itemsText(order.items),
+        ``,
+        `Delivery / pickup:`,
+        deliveryText(order.shippingAddress),
+        ``,
+        `Admin: ${adminOrdersUrl()}`,
+      ].join('\n');
 
-    const html = harvEmailLayout({
-      title: `New ${channel} order`,
-      preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
-      bodyHtml: `
+      const html = harvEmailLayout({
+        title: `New ${channel} order`,
+        preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
+        bodyHtml: `
         <p style="margin:0 0 8px;font-size:15px;font-weight:700;">${order.orderNumber}</p>
         <p style="margin:0 0 20px;font-size:13px;color:#444;">${formatGhs(order.totalAmount)}</p>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;font-size:12px;color:#555;">
+          <tr><td style="padding:4px 0;"><strong>Channel</strong></td><td style="padding:4px 0;">${channel}</td></tr>
           <tr><td style="padding:4px 0;"><strong>Payment</strong></td><td style="padding:4px 0;">${payment}</td></tr>
           <tr><td style="padding:4px 0;"><strong>Status</strong></td><td style="padding:4px 0;">${STATUS_LABEL[order.status] || order.status}</td></tr>
         </table>
@@ -154,122 +181,165 @@ async function notifyAdminNewOrder(orderOrId) {
         <ul style="margin:0 0 20px;padding-left:18px;font-size:12px;line-height:1.7;color:#444;">${itemsHtml(order.items)}</ul>
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;">Delivery</p>
         <p style="margin:0 0 20px;font-size:11px;line-height:1.6;color:#555;background:#f6f6f6;padding:12px;border:1px solid #e8e8e8;white-space:pre-wrap;">${deliveryText(order.shippingAddress)}</p>
-        <p style="margin:0;font-size:11px;color:#888;">Open Admin → Orders to confirm payment or update status.</p>`,
-    });
+        <a href="${adminOrdersUrl()}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 24px;">View orders</a>`,
+      });
 
-    await sendTransactionalEmail({
-      to: { email: to, name: 'HARV Admin' },
-      subject,
-      textContent: text,
-      htmlContent: html,
+      await sendTransactionalEmail({
+        to: { email: to, name: 'HARV Admin' },
+        subject,
+        textContent: text,
+        htmlContent: html,
+      });
     });
-  });
+  }
+
+  if (isMnotifyConfigured()) {
+    await safeSend('admin new order sms', async () => {
+      const phone = formatPhoneForMnotify(adminNotifyPhone());
+      if (!phone) return;
+
+      const sms = [
+        `HARV: New ${channel} order ${order.orderNumber}.`,
+        `${formatGhs(order.totalAmount)} · ${customerName(order)}.`,
+        `View: ${adminOrdersUrl()}`,
+      ].join(' ');
+
+      await sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) });
+    });
+  }
 }
 
-/** Admin email when Paystack payment succeeds */
+/** Admin email + SMS when Paystack payment succeeds */
 async function notifyAdminPaymentReceived(orderOrId) {
-  if (!isBrevoConfigured()) return;
+  const order = await loadOrder(orderOrId);
+  if (!order) return;
 
-  await safeSend('admin payment received', async () => {
-    const order = await loadOrder(orderOrId);
-    const to = adminNotifyEmail();
-    if (!order || !to) return;
+  const channel = channelLabel(order.channel);
 
-    const subject = `Payment received — ${order.orderNumber}`;
-    const text = [
-      `Paystack payment confirmed.`,
-      ``,
-      `Order: ${order.orderNumber}`,
-      `Order ID: ${order._id}`,
-      `Total: ${formatGhs(order.totalAmount)}`,
-      `Customer: ${customerName(order)}`,
-      `Reference: ${order.paystackReference || '—'}`,
-    ].join('\n');
+  if (isBrevoConfigured()) {
+    await safeSend('admin payment received email', async () => {
+      const to = adminNotifyEmail();
+      if (!to) return;
 
-    await sendTransactionalEmail({
-      to: { email: to, name: 'HARV Admin' },
-      subject,
-      textContent: text,
-      htmlContent: harvEmailLayout({
-        title: 'Payment received',
-        preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
-        bodyHtml: `
+      const subject = `Payment received — ${order.orderNumber}`;
+      const text = [
+        `Paystack payment confirmed.`,
+        ``,
+        `Order: ${order.orderNumber}`,
+        `Order ID: ${order._id}`,
+        `Channel: ${channel}`,
+        `Total: ${formatGhs(order.totalAmount)}`,
+        `Customer: ${customerName(order)}`,
+        `Reference: ${order.paystackReference || '—'}`,
+        ``,
+        `Admin: ${adminOrdersUrl()}`,
+      ].join('\n');
+
+      await sendTransactionalEmail({
+        to: { email: to, name: 'HARV Admin' },
+        subject,
+        textContent: text,
+        htmlContent: harvEmailLayout({
+          title: 'Payment received',
+          preheader: `${order.orderNumber} · ${formatGhs(order.totalAmount)}`,
+          bodyHtml: `
           <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#111;">
             Paystack payment confirmed for <strong>${order.orderNumber}</strong>.
           </p>
           <p style="margin:0 0 8px;font-size:13px;color:#444;">Total: ${formatGhs(order.totalAmount)}</p>
-          <p style="margin:0;font-size:12px;color:#555;">Customer: ${customerName(order)}</p>`,
-      }),
+          <p style="margin:0 0 20px;font-size:12px;color:#555;">Customer: ${customerName(order)}</p>
+          <a href="${adminOrdersUrl()}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 24px;">View orders</a>`,
+        }),
+      });
     });
-  });
+  }
+
+  if (isMnotifyConfigured()) {
+    await safeSend('admin payment received sms', async () => {
+      const phone = formatPhoneForMnotify(adminNotifyPhone());
+      if (!phone) return;
+
+      const sms = [
+        `HARV: Payment received for ${channel} order ${order.orderNumber}.`,
+        `${formatGhs(order.totalAmount)} · ${customerName(order)}.`,
+        `View: ${adminOrdersUrl()}`,
+      ].join(' ');
+
+      await sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) });
+    });
+  }
 }
 
-/** Customer email + SMS on every order status change */
+/** Customer email (Brevo) + SMS (Mnotify) on every order status change */
 async function notifyCustomerOrderStatus(orderOrId, previousStatus) {
-  if (!isBrevoConfigured()) return;
+  const order = await loadOrder(orderOrId);
+  if (!order) return;
 
-  await safeSend('customer status change', async () => {
-    const order = await loadOrder(orderOrId);
-    if (!order) return;
+  const status = order.status;
+  if (previousStatus === status) return;
 
-    const status = order.status;
-    if (previousStatus === status) return;
+  const label = STATUS_LABEL[status] || status;
+  const smsLine = STATUS_SMS[status] || `Your order status is now ${label}.`;
+  const email = customerEmail(order);
+  const phone = formatPhoneForMnotify(customerPhone(order));
+  const name = customerName(order);
 
-    const label = STATUS_LABEL[status] || status;
-    const smsLine = STATUS_SMS[status] || `Your order status is now ${label}.`;
-    const email = customerEmail(order);
-    const phone = normalizePhoneForSms(customerPhone(order));
-    const name = customerName(order);
+  const subject = `HARV DREAMS — Order ${order.orderNumber} is ${label}`;
+  const text = [
+    `Hi ${name},`,
+    ``,
+    `Your order ${order.orderNumber} is now: ${label}.`,
+    smsLine,
+    ``,
+    `Total: ${formatGhs(order.totalAmount)}`,
+    `Track your order in your HARV account.`,
+  ].join('\n');
 
-    const subject = `HARV DREAMS — Order ${order.orderNumber} is ${label}`;
-    const text = [
-      `Hi ${name},`,
-      ``,
-      `Your order ${order.orderNumber} is now: ${label}.`,
-      smsLine,
-      ``,
-      `Total: ${formatGhs(order.totalAmount)}`,
-      `Track your order in your HARV account.`,
-    ].join('\n');
+  const html = harvEmailLayout({
+    title: `Order ${label}`,
+    preheader: `${order.orderNumber} is now ${label}`,
+    bodyHtml: `
+      <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#111;">Hi ${name},</p>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#111;">
+        Your order <strong>${order.orderNumber}</strong> is now <strong>${label}</strong>.
+      </p>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#444;">${smsLine}</p>
+      <p style="margin:0 0 24px;font-size:12px;color:#666;">Total: ${formatGhs(order.totalAmount)}</p>
+      <a href="${accountUrl()}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 24px;">View your order</a>`,
+  });
 
-    const accountUrl = `${(process.env.FRONTEND_URL || 'https://harvdreams.com').replace(/\/$/, '')}/account`;
-    const html = harvEmailLayout({
-      title: `Order ${label}`,
-      preheader: `${order.orderNumber} is now ${label}`,
-      bodyHtml: `
-        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#111;">Hi ${name},</p>
-        <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#111;">
-          Your order <strong>${order.orderNumber}</strong> is now <strong>${label}</strong>.
-        </p>
-        <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#444;">${smsLine}</p>
-        <p style="margin:0 0 24px;font-size:12px;color:#666;">Total: ${formatGhs(order.totalAmount)}</p>
-        <a href="${accountUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 24px;">View your order</a>`,
-    });
+  const tasks = [];
 
-    const tasks = [];
-    if (email) {
-      tasks.push(
+  if (email && isBrevoConfigured()) {
+    tasks.push(
+      safeSend('customer status email', () =>
         sendTransactionalEmail({
           to: { email, name },
           subject,
           textContent: text,
           htmlContent: html,
         })
-      );
-    }
+      )
+    );
+  }
 
-    if (phone) {
-      const sms = `HARV DREAMS: Order ${order.orderNumber} — ${label}. ${smsLine}`;
-      tasks.push(sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) }));
-    }
+  if (phone && isMnotifyConfigured()) {
+    const sms = `HARV DREAMS: Order ${order.orderNumber} — ${label}. ${smsLine} Track: ${accountUrl()}`;
+    tasks.push(
+      safeSend('customer status sms', () =>
+        sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) })
+      )
+    );
+  }
 
-    if (!tasks.length) {
+  if (!tasks.length) {
+    if (!email && !phone) {
       console.warn(`[notify] No customer email/phone for order ${order.orderNumber}`);
-      return;
     }
+    return;
+  }
 
-    await Promise.all(tasks);
-  });
+  await Promise.all(tasks);
 }
 
 /** Fire-and-forget wrappers for route handlers */
@@ -287,6 +357,7 @@ function queueCustomerStatusChange(order, previousStatus) {
 
 module.exports = {
   isBrevoConfigured,
+  isMnotifyConfigured,
   notifyAdminNewOrder,
   notifyAdminPaymentReceived,
   notifyCustomerOrderStatus,

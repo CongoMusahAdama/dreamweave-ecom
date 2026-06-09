@@ -207,14 +207,25 @@ productSchema.statics.getNewArrivals = function(limit = 10) {
 
 // Instance method to update stock
 productSchema.methods.updateStock = function(size, quantity) {
+  this.stock = Math.max(0, this.stock - quantity);
+
   if (this.sizes && this.sizes.length > 0) {
-    const sizeIndex = this.sizes.findIndex(s => s.name === size);
+    const sizeIndex = this.sizes.findIndex((s) => s.name === size);
     if (sizeIndex !== -1) {
       this.sizes[sizeIndex].stock = Math.max(0, this.sizes[sizeIndex].stock - quantity);
     }
-  } else {
-    this.stock = Math.max(0, this.stock - quantity);
   }
+
+  if (this.stock <= 0) {
+    this.stock = 0;
+    this.soldOut = true;
+    if (this.sizes?.length) {
+      this.sizes.forEach((entry) => {
+        entry.stock = 0;
+      });
+    }
+  }
+
   return this.save();
 };
 

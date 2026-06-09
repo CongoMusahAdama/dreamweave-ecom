@@ -1,5 +1,5 @@
 /**
- * Normalize phone numbers for Brevo SMS (digits only, no +).
+ * Normalize phone numbers for SMS (digits only, no +).
  * Supports international numbers and local Ghana format (0XXXXXXXXX → 233XXXXXXXXX).
  */
 function normalizePhoneForSms(phone, defaultCountryCode = '233') {
@@ -27,4 +27,16 @@ function isValidPhoneInput(phone) {
   return normalizePhoneForSms(trimmed) !== null;
 }
 
-module.exports = { normalizePhoneForSms, isValidPhoneInput };
+/** Ghana local format for Mnotify (0XXXXXXXXX). */
+function formatPhoneForMnotify(phone, defaultCountryCode = '233') {
+  const normalized = normalizePhoneForSms(phone, defaultCountryCode);
+  if (!normalized) return null;
+
+  if (normalized.startsWith(defaultCountryCode)) {
+    return `0${normalized.slice(defaultCountryCode.length)}`;
+  }
+
+  return normalized;
+}
+
+module.exports = { normalizePhoneForSms, formatPhoneForMnotify, isValidPhoneInput };

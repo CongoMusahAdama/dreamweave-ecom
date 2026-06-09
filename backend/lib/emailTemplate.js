@@ -1,5 +1,6 @@
 function siteUrl() {
-  return (process.env.FRONTEND_URL || 'https://harvdreams.com').replace(/\/$/, '');
+  const { publicSiteUrl } = require('./publicSiteUrl');
+  return publicSiteUrl();
 }
 
 function logoUrl() {

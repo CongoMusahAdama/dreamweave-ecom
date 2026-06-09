@@ -3,11 +3,13 @@ import { Phone, User } from 'lucide-react';
 import type { AuthUser } from '@/types/customer';
 import { apiFetch } from '@/lib/api';
 import { sweetSuccess, sweetError } from '@/lib/sweet-alert';
+import DeleteAccountDialog from '@/components/account/DeleteAccountDialog';
 
 type ProfileSectionProps = {
   user: AuthUser;
   token: string;
   onSaved: (updated: AuthUser) => void;
+  onDeleted: () => void;
 };
 
 const labelCls =
@@ -15,10 +17,12 @@ const labelCls =
 const inputCls =
   'w-full border border-black px-3 py-3 min-h-[48px] text-[11px] font-bold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black';
 
-const ProfileSection = ({ user, token, onSaved }: ProfileSectionProps) => {
+const ProfileSection = ({ user, token, onSaved, onDeleted }: ProfileSectionProps) => {
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone || '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -65,6 +69,24 @@ const ProfileSection = ({ user, token, onSaved }: ProfileSectionProps) => {
       sweetError('Could not save', err instanceof Error ? err.message : undefined);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async (password: string) => {
+    setDeleting(true);
+    try {
+      await apiFetch<{ success: boolean; message: string }>('/api/auth/account', {
+        method: 'DELETE',
+        token,
+        body: JSON.stringify({ password }),
+      });
+      setDeleteOpen(false);
+      sweetSuccess('Account deleted', 'Your account has been removed.');
+      onDeleted();
+    } catch (err) {
+      sweetError('Could not delete account', err instanceof Error ? err.message : undefined);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -167,6 +189,30 @@ const ProfileSection = ({ user, token, onSaved }: ProfileSectionProps) => {
           {saving ? 'Saving…' : 'Save profile'}
         </button>
       </form>
+
+      <div className="mt-10 pt-8 border-t border-red-200">
+        <p className="text-[9px] font-bold tracking-[0.2em] uppercase text-red-700 mb-2">
+          Danger zone
+        </p>
+        <p className="text-[10px] font-bold text-black/45 leading-relaxed mb-4 max-w-md">
+          Permanently delete your account. You will lose access to orders, wishlist, and saved
+          delivery details in your dashboard.
+        </p>
+        <button
+          type="button"
+          onClick={() => setDeleteOpen(true)}
+          className="w-full sm:w-auto border border-red-600 text-red-700 px-8 py-3.5 min-h-[48px] text-[10px] font-bold tracking-[0.2em] uppercase hover:bg-red-600 hover:text-white transition-colors"
+        >
+          Delete account
+        </button>
+      </div>
+
+      <DeleteAccountDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDeleteAccount}
+        loading={deleting}
+      />
     </section>
   );
 };

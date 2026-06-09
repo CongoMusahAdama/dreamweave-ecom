@@ -4,6 +4,7 @@ const {
   queueAdminPaymentReceived,
   queueCustomerStatusChange,
 } = require('./orderNotifications');
+const { decrementStockForPaidOrder } = require('./inventory');
 
 function isPaystackConfigured() {
   return Boolean(process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_PUBLIC_KEY);
@@ -57,6 +58,16 @@ async function markOrderPaidByReference(reference) {
     });
   }
   await order.save();
+
+  if (!order.stockDeducted) {
+    try {
+      await decrementStockForPaidOrder(order);
+      order.stockDeducted = true;
+      await order.save();
+    } catch (err) {
+      console.error('[inventory] Failed to decrement stock for paid order:', err.message);
+    }
+  }
 
   queueAdminPaymentReceived(order);
   if (previousStatus !== order.status) {

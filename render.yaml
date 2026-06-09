@@ -42,8 +42,12 @@ services:
         sync: false
       - key: BREVO_SENDER_NAME
         value: HARV DREAMS
-      - key: BREVO_SMS_SENDER
-        value: HARV
+      - key: MNOTIFY_API_KEY
+        sync: false
+      - key: MNOTIFY_SENDER_ID
+        value: HARV DREAMS
       - key: ADMIN_NOTIFY_EMAIL
+        sync: false
+      - key: ADMIN_NOTIFY_PHONE
         sync: false
       # Paystack webhook: https://<this-service>/api/payments/webhook

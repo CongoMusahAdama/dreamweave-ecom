@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import ShopHeader from '@/components/navigation/ShopHeader';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
@@ -37,6 +37,7 @@ const SECTION_TITLE: Record<AccountSection, string> = {
 };
 
 const Account = () => {
+  const navigate = useNavigate();
   const { user, token, logout, refreshUser, updateUser, isAdmin } = useAuth();
   const { cartCount } = useCart();
   const { products: catalogProducts } = useShopCatalog();
@@ -346,6 +347,10 @@ const Account = () => {
                   onSaved={(updated) => {
                     updateUser(updated);
                     void refreshUser();
+                  }}
+                  onDeleted={() => {
+                    logout();
+                    navigate('/', { replace: true });
                   }}
                 />
               )}
