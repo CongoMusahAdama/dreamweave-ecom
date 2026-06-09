@@ -18,7 +18,7 @@ const router = express.Router();
 router.get('/', protect, async (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin';
-    const query = isAdmin ? {} : { customer: req.user.id };
+    const query = isAdmin ? {} : { customer: req.user.id, status: { $ne: 'cancelled' } };
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const defaultLimit = isAdmin ? 10 : 5;
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || defaultLimit));

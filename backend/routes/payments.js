@@ -14,6 +14,10 @@ const {
   queueAdminNewOrder,
 } = require('../lib/orderNotifications');
 const { validateOrderItems, totalsMatch } = require('../lib/orderPricing');
+const {
+  findReusablePaystackOrder,
+  cancelSupersededPaystackOrders,
+} = require('../lib/shopOrderCheckout');
 
 const router = express.Router();
 
@@ -88,23 +92,36 @@ router.post('/initialize', protect, [
       });
     }
 
-    const order = await ShopOrder.create({
-      customer: req.user.id,
-      items: pricing.items,
-      shippingAddress,
-      totalAmount: pricing.totalAmount,
-      channel: 'paystack',
-      status: 'pending',
-      paymentStatus: 'pending',
-      statusHistory: [{
-        status: 'pending',
-        changedAt: new Date(),
-        changedBy: req.user.id,
-        note: 'Paystack checkout started',
-      }],
-    });
+    let order = await findReusablePaystackOrder(req.user.id, pricing);
+    let isNewOrder = false;
 
-    queueAdminNewOrder(order);
+    if (order) {
+      order.shippingAddress = shippingAddress;
+      await order.save();
+    } else {
+      isNewOrder = true;
+      order = await ShopOrder.create({
+        customer: req.user.id,
+        items: pricing.items,
+        shippingAddress,
+        totalAmount: pricing.totalAmount,
+        channel: 'paystack',
+        status: 'pending',
+        paymentStatus: 'pending',
+        statusHistory: [{
+          status: 'pending',
+          changedAt: new Date(),
+          changedBy: req.user.id,
+          note: 'Paystack checkout started',
+        }],
+      });
+    }
+
+    await cancelSupersededPaystackOrders(req.user.id, pricing, order._id);
+
+    if (isNewOrder) {
+      queueAdminNewOrder(order);
+    }
 
     const reference = `HD-${order._id}-${Date.now()}`;
     const callbackUrl = `${frontendBaseUrl()}/payment/callback`;

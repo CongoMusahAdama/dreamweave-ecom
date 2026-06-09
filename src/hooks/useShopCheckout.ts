@@ -1,11 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaystack } from '@/contexts/PaystackContext';
 import { apiFetch } from '@/lib/api';
 import { getDeliveryFromUser, isDeliveryComplete, deliveryToAddressPayload } from '@/lib/delivery';
-import { openPaystackPayment } from '@/lib/paystack';
 import { openWhatsApp } from '@/lib/whatsapp';
-import { sweetError, sweetSuccess } from '@/lib/sweet-alert';
+import { sweetError } from '@/lib/sweet-alert';
 import type { DeliveryDetails, ShopOrderItem } from '@/types/customer';
 
 type CheckoutChannel = 'whatsapp' | 'paystack';
@@ -24,6 +23,7 @@ export function useShopCheckout() {
   const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
   const [paystackLoading, setPaystackLoading] = useState(false);
   const [pendingChannel, setPendingChannel] = useState<CheckoutChannel>('whatsapp');
+  const paystackInitInFlight = useRef(false);
 
   const runWhatsAppCheckout = useCallback(
     async (
@@ -60,6 +60,8 @@ export function useShopCheckout() {
         return;
       }
 
+      if (paystackInitInFlight.current) return;
+      paystackInitInFlight.current = true;
       setPaystackLoading(true);
       try {
         const init = await apiFetch<{
@@ -70,6 +72,7 @@ export function useShopCheckout() {
             publicKey: string;
             amount: number;
             orderId: string;
+            authorizationUrl?: string;
           };
         }>('/api/payments/initialize', {
           method: 'POST',
@@ -81,39 +84,18 @@ export function useShopCheckout() {
           }),
         });
 
-        const { reference, publicKey, amount } = init.data;
+        const { authorizationUrl } = init.data;
+        if (!authorizationUrl) {
+          throw new Error('Paystack did not return a checkout link. Please try again.');
+        }
 
-        await openPaystackPayment({
-          key: publicKey,
-          email: user.email,
-          amount,
-          currency: 'GHS',
-          ref: reference,
-          metadata: { orderId: init.data.orderId },
-          callback: async (response) => {
-            try {
-              await apiFetch(`/api/payments/verify/${encodeURIComponent(response.reference)}`, {
-                token,
-              });
-              sweetSuccess(
-                'Payment received',
-                'Your order is confirmed. Open Account → Orders to track it.'
-              );
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('harv:order-paid'));
-              }
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Could not verify payment';
-              sweetError('Payment verification failed', msg);
-            }
-          },
-          onClose: () => {},
-        });
+        // Keep loading state until navigation — prevents double-click duplicate orders
+        window.location.assign(authorizationUrl);
       } catch (err) {
+        paystackInitInFlight.current = false;
+        setPaystackLoading(false);
         const msg = err instanceof Error ? err.message : 'Could not start Paystack payment';
         sweetError('Paystack unavailable', msg);
-      } finally {
-        setPaystackLoading(false);
       }
     },
     [token, user?.email]

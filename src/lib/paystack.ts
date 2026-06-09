@@ -50,12 +50,39 @@ export function loadPaystackScript(): Promise<void> {
   return scriptPromise;
 }
 
+/** Paystack inline rejects async callbacks — wrap any async work in a sync handler */
+function toPaystackCallback(onSuccess: PaystackSetupConfig['callback']): PaystackSetupConfig['callback'] {
+  return (response) => {
+    onSuccess(response);
+  };
+}
+
 export async function openPaystackPayment(config: PaystackSetupConfig) {
   await loadPaystackScript();
   if (!window.PaystackPop) {
     throw new Error('Paystack is not available');
   }
-  const handler = window.PaystackPop.setup(config);
+
+  const form = document.createElement('form');
+  form.style.display = 'none';
+  document.body.appendChild(form);
+
+  const cleanup = () => {
+    form.remove();
+  };
+
+  const handler = window.PaystackPop.setup({
+    ...config,
+    callback: toPaystackCallback((response) => {
+      config.callback(response);
+      cleanup();
+    }),
+    onClose: () => {
+      config.onClose();
+      cleanup();
+    },
+  });
+  form.appendChild(document.createElement('div'));
   handler.openIframe();
 }
 
