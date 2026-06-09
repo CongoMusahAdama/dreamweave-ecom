@@ -204,6 +204,9 @@ mongoose.connect(process.env.MONGODB_URI, {
     }
     if (isMnotifyConfigured()) {
       console.log('✅ Mnotify configured (transactional SMS enabled)');
+      if (!process.env.ADMIN_NOTIFY_PHONE?.trim()) {
+        console.warn('⚠️  ADMIN_NOTIFY_PHONE missing — admin order SMS alerts will not be sent');
+      }
     } else {
       console.warn('⚠️  Mnotify not configured — add MNOTIFY_API_KEY and MNOTIFY_SENDER_ID to backend/.env');
     }

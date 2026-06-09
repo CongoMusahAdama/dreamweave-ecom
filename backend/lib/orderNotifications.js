@@ -62,6 +62,20 @@ function itemsText(items = []) {
     .join('\n');
 }
 
+function itemsSummarySms(items = []) {
+  return items
+    .map((item) => `${item.name} (${item.size}) x${item.quantity}`)
+    .join(', ');
+}
+
+function adminNotifyPhoneOrWarn(label) {
+  const phone = formatPhoneForMnotify(adminNotifyPhone());
+  if (!phone) {
+    console.warn(`[notify] ${label} skipped — set ADMIN_NOTIFY_PHONE in backend/.env`);
+  }
+  return phone;
+}
+
 function itemsHtml(items = []) {
   return items
     .map((item) => {
@@ -195,14 +209,18 @@ async function notifyAdminNewOrder(orderOrId) {
 
   if (isMnotifyConfigured()) {
     await safeSend('admin new order sms', async () => {
-      const phone = formatPhoneForMnotify(adminNotifyPhone());
+      const phone = adminNotifyPhoneOrWarn('admin new order sms');
       if (!phone) return;
 
+      const products = itemsSummarySms(order.items);
       const sms = [
         `HARV: New ${channel} order ${order.orderNumber}.`,
+        products,
         `${formatGhs(order.totalAmount)} · ${customerName(order)}.`,
         `View: ${adminOrdersUrl()}`,
-      ].join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       await sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) });
     });
@@ -256,14 +274,18 @@ async function notifyAdminPaymentReceived(orderOrId) {
 
   if (isMnotifyConfigured()) {
     await safeSend('admin payment received sms', async () => {
-      const phone = formatPhoneForMnotify(adminNotifyPhone());
+      const phone = adminNotifyPhoneOrWarn('admin payment received sms');
       if (!phone) return;
 
+      const products = itemsSummarySms(order.items);
       const sms = [
         `HARV: Payment received for ${channel} order ${order.orderNumber}.`,
+        products,
         `${formatGhs(order.totalAmount)} · ${customerName(order)}.`,
         `View: ${adminOrdersUrl()}`,
-      ].join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       await sendTransactionalSms({ recipient: phone, content: sms.slice(0, 480) });
     });
