@@ -10,6 +10,20 @@ function isPaystackConfigured() {
   return Boolean(process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_PUBLIC_KEY);
 }
 
+function paystackKeyMode(key, prefix) {
+  if (!key) return 'missing';
+  if (key.startsWith(`${prefix}_live_`)) return 'live';
+  if (key.startsWith(`${prefix}_test_`)) return 'test';
+  return 'unknown';
+}
+
+function getPaystackKeyStatus() {
+  const publicMode = paystackKeyMode(process.env.PAYSTACK_PUBLIC_KEY, 'pk');
+  const secretMode = paystackKeyMode(process.env.PAYSTACK_SECRET_KEY, 'sk');
+  const matched = publicMode !== 'missing' && publicMode === secretMode;
+  return { publicMode, secretMode, matched, mode: matched ? publicMode : 'mismatch' };
+}
+
 function frontendBaseUrl() {
   return (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 }
@@ -98,6 +112,7 @@ async function verifyTransactionReference(reference) {
 
 module.exports = {
   isPaystackConfigured,
+  getPaystackKeyStatus,
   frontendBaseUrl,
   paystackRequest,
   verifyWebhookSignature,

@@ -16,7 +16,7 @@ const adminRoutes = require('./routes/admin');
 const shopOrderRoutes = require('./routes/shopOrders');
 const paymentRoutes = require('./routes/payments');
 const paystackWebhookHandler = paymentRoutes.paystackWebhookHandler;
-const { isPaystackConfigured } = require('./lib/paystack');
+const { isPaystackConfigured, getPaystackKeyStatus } = require('./lib/paystack');
 const { isBrevoConfigured } = require('./lib/brevo');
 const { isMnotifyConfigured } = require('./lib/mnotify');
 const galleryRoutes = require('./routes/gallery');
@@ -193,7 +193,16 @@ mongoose.connect(process.env.MONGODB_URI, {
     await ensureDefaultCategories();
     await warnIfCloudinaryMisconfigured();
     if (isPaystackConfigured()) {
-      console.log('✅ Paystack configured (card checkout enabled)');
+      const paystackKeys = getPaystackKeyStatus();
+      if (paystackKeys.matched && paystackKeys.mode === 'live') {
+        console.log('✅ Paystack configured (LIVE mode)');
+      } else if (paystackKeys.matched && paystackKeys.mode === 'test') {
+        console.log('✅ Paystack configured (TEST mode)');
+      } else {
+        console.warn(
+          `⚠️  Paystack key mismatch — public=${paystackKeys.publicMode}, secret=${paystackKeys.secretMode}. Checkout may show the wrong mode.`
+        );
+      }
     } else {
       console.warn('⚠️  Paystack keys missing — add PAYSTACK_PUBLIC_KEY and PAYSTACK_SECRET_KEY to backend/.env');
     }

@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 const { validateShippingAddress } = require('../utils/validateShippingAddress');
 const {
   isPaystackConfigured,
+  getPaystackKeyStatus,
   frontendBaseUrl,
   paystackRequest,
   verifyWebhookSignature,
@@ -26,12 +27,15 @@ const router = express.Router();
 // @access  Public
 router.get('/config', (req, res) => {
   const enabled = isPaystackConfigured();
+  const keyStatus = getPaystackKeyStatus();
   res.status(200).json({
     success: true,
     data: {
       enabled,
       publicKey: enabled ? process.env.PAYSTACK_PUBLIC_KEY : null,
       currency: 'GHS',
+      mode: keyStatus.mode,
+      keysMatched: keyStatus.matched,
     },
   });
 });
