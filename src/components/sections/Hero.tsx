@@ -15,42 +15,15 @@ const Hero = () => {
             className="hero-image-live h-full w-full object-cover object-center"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-          <figcaption className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-10 lg:p-12 text-left">
-            <ScrollReveal variant="fade-up" delay={100}>
-              <p className="label-caps text-white/70 mb-3 sm:mb-4">Est. 2024 • Accra, Ghana</p>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fade-up" delay={180}>
-              <p className="heading-display text-lg sm:text-2xl md:text-3xl text-white mb-1 sm:mb-2" role="presentation">
-                Dream Boldly,
-              </p>
-              <p className="heading-display text-lg sm:text-2xl md:text-3xl text-white/85 mb-4 sm:mb-5" role="presentation">
-                Wear Dreams.
-              </p>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fade-up" delay={260}>
-              <p className="text-[11px] sm:text-[12px] font-bold text-white/85 max-w-md mb-6 sm:mb-8 leading-[1.7]">
-                Curated streetwear from Takoradi. Built for dreamers who refuse to settle.
-              </p>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fade-up" delay={340}>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                <Link to="/products" className="w-full sm:w-auto">
-                  <button type="button" className="btn-premium w-full sm:w-auto">
-                    Shop Collection
-                  </button>
-                </Link>
-                <Link
-                  to="/gallery"
-                  className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/85 hover:text-white py-3 text-center sm:text-left transition-colors"
-                >
-                  Explore Gallery →
-                </Link>
-              </div>
+          <figcaption className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-10 lg:p-12">
+            <ScrollReveal variant="fade-up" delay={120}>
+              <Link to="/products" className="block w-full sm:w-auto sm:inline-block">
+                <button type="button" className="btn-premium w-full sm:w-auto">
+                  Shop Collection
+                </button>
+              </Link>
             </ScrollReveal>
           </figcaption>
         </figure>

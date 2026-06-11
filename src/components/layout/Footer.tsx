@@ -32,10 +32,6 @@ const Footer = () => {
             <Link to="/" className="inline-block mb-8">
               <SiteLogo variant="dark" className="h-12 md:h-14 max-w-[220px]" />
             </Link>
-            <p className="text-white/60 text-sm leading-[1.7] max-w-xs mb-8">
-              Dream-driven streetwear from the heart of Takoradi, Ghana. 
-              Elevating the visionary spirit through curated design.
-            </p>
             <div className="flex items-center gap-6">
               <a
                 href={SOCIAL_LINKS[0].href}

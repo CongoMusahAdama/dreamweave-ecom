@@ -221,6 +221,12 @@ router.put('/profile', protect, [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
   body('phone').optional({ values: 'null' }).trim(),
   body('addresses').optional().isArray(),
 ], async (req, res) => {
@@ -235,7 +241,7 @@ router.put('/profile', protect, [
       });
     }
 
-    const { name, phone, addresses } = req.body;
+    const { name, email, phone, addresses } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -246,6 +252,26 @@ router.put('/profile', protect, [
     }
 
     if (name) user.name = name;
+
+    if (email !== undefined) {
+      const nextEmail = String(email).trim().toLowerCase();
+      if (!nextEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required',
+        });
+      }
+      if (nextEmail !== user.email) {
+        const taken = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+        if (taken) {
+          return res.status(400).json({
+            success: false,
+            message: 'That email is already in use',
+          });
+        }
+        user.email = nextEmail;
+      }
+    }
 
     if (phone !== undefined) {
       const nextPhone = String(phone).trim();
