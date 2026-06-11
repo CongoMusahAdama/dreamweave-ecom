@@ -4,6 +4,7 @@ const ShopOrder = require('../models/ShopOrder');
 const { escapeRegex } = require('../lib/regex');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const { anonymizeCustomerUser, isDeletedCustomerEmail } = require('../lib/customerAccount');
 
 const router = express.Router();
 
@@ -14,8 +15,12 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
     
-    let query = { role: 'customer' };
-    
+    let query = {
+      role: 'customer',
+      isActive: true,
+      email: { $not: /@deleted\.harv\.local$/i },
+    };
+
     if (search) {
       const term = escapeRegex(String(search).trim());
       if (term) {
@@ -34,11 +39,26 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       .skip((page - 1) * limit);
 
     const total = await User.countDocuments(query);
+    const customerIds = customers.map((c) => c._id);
+    const orderCounts = customerIds.length
+      ? await ShopOrder.aggregate([
+          { $match: { customer: { $in: customerIds } } },
+          { $group: { _id: '$customer', count: { $sum: 1 } } },
+        ])
+      : [];
+    const orderCountById = new Map(
+      orderCounts.map((row) => [row._id.toString(), row.count])
+    );
+
+    const customersWithStats = customers.map((customer) => ({
+      ...customer.toObject(),
+      orderCount: orderCountById.get(customer._id.toString()) || 0,
+    }));
 
     res.status(200).json({
       success: true,
       data: {
-        customers,
+        customers: customersWithStats,
         pagination: {
           currentPage: parseInt(page),
           totalPages: Math.ceil(total / limit),
@@ -189,6 +209,41 @@ router.put('/:id', protect, authorize('admin'), [
     res.status(500).json({
       success: false,
       message: 'Error updating customer'
+    });
+  }
+});
+
+// @desc    Delete customer account (admin — anonymize, orders kept)
+// @route   DELETE /api/customers/:id
+// @access  Private (Admin only)
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const customer = await User.findById(req.params.id).select('+password');
+    if (!customer || customer.role !== 'customer') {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found',
+      });
+    }
+
+    if (isDeletedCustomerEmail(customer.email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer account is already deleted',
+      });
+    }
+
+    await anonymizeCustomerUser(customer);
+
+    res.status(200).json({
+      success: true,
+      message: 'Customer account deleted',
+    });
+  } catch (error) {
+    console.error('Delete customer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting customer',
     });
   }
 });

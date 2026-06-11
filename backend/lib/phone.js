@@ -27,7 +27,7 @@ function isValidPhoneInput(phone) {
   return normalizePhoneForSms(trimmed) !== null;
 }
 
-/** Ghana local format for Mnotify (0XXXXXXXXX). */
+/** Ghana local format for SMS/MoMo (0XXXXXXXXX). */
 function formatPhoneForMnotify(phone, defaultCountryCode = '233') {
   const normalized = normalizePhoneForSms(phone, defaultCountryCode);
   if (!normalized) return null;
@@ -39,4 +39,32 @@ function formatPhoneForMnotify(phone, defaultCountryCode = '233') {
   return normalized;
 }
 
-module.exports = { normalizePhoneForSms, formatPhoneForMnotify, isValidPhoneInput };
+const formatPhoneForPaystack = formatPhoneForMnotify;
+
+/** Paystack Ghana MoMo provider codes: mtn | vod | atl */
+function detectGhanaMoMoProvider(phone) {
+  const local = formatPhoneForPaystack(phone);
+  if (!local || local.length < 10) return null;
+
+  const prefix = local.slice(0, 3);
+  if (['024', '054', '055', '059', '025'].includes(prefix)) return 'mtn';
+  if (['020', '050'].includes(prefix)) return 'vod';
+  if (['026', '027', '056', '057'].includes(prefix)) return 'atl';
+  return null;
+}
+
+function moMoProviderLabel(code) {
+  if (code === 'mtn') return 'MTN';
+  if (code === 'vod') return 'Telecel';
+  if (code === 'atl') return 'AT Money';
+  return code || '';
+}
+
+module.exports = {
+  normalizePhoneForSms,
+  formatPhoneForMnotify,
+  formatPhoneForPaystack,
+  detectGhanaMoMoProvider,
+  moMoProviderLabel,
+  isValidPhoneInput,
+};

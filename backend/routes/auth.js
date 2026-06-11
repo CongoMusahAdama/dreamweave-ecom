@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { isValidPhoneInput } = require('../lib/phone');
 const { queueWelcomeSms } = require('../lib/accountNotifications');
+const { anonymizeCustomerUser } = require('../lib/customerAccount');
 
 const router = express.Router();
 
@@ -416,19 +417,7 @@ router.delete('/account', protect, [
       });
     }
 
-    const deletedId = user._id.toString();
-    user.name = 'Deleted User';
-    user.email = `deleted_${deletedId}@deleted.harv.local`;
-    user.phone = undefined;
-    user.addresses = [];
-    user.wishlist = [];
-    user.avatar = '';
-    user.isActive = false;
-    user.phoneVerified = false;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    user.password = crypto.randomBytes(32).toString('hex');
-    await user.save();
+    await anonymizeCustomerUser(user);
 
     res.status(200).json({
       success: true,

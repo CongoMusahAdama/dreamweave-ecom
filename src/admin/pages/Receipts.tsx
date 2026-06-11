@@ -192,7 +192,9 @@ const Receipts = () => {
             page={page}
             totalPages={totalPages}
             total={total}
+            pageSize={PAGE_SIZE}
             onPageChange={setPage}
+            itemLabel="receipts"
           />
         </>
       )}

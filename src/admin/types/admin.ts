@@ -52,6 +52,8 @@ export interface AdminCustomer {
   email: string;
   phone?: string;
   createdAt: string;
+  isActive?: boolean;
+  orderCount?: number;
 }
 
 export interface DashboardPayload {

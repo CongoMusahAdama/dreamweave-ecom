@@ -22,12 +22,14 @@ import Shipping from './pages/Shipping';
 import Privacy from './pages/Privacy';
 import Account from './pages/Account';
 import PaymentCallback from './pages/PaymentCallback';
+import PaymentMoMoPending from './pages/PaymentMoMoPending';
 
 const AdminDashboard = lazy(() => import('./admin/pages/Dashboard'));
 const AdminProducts = lazy(() => import('./admin/pages/Products'));
 const AdminOrders = lazy(() => import('./admin/pages/Orders'));
 const AdminGallery = lazy(() => import('./admin/pages/Gallery'));
 const AdminReceipts = lazy(() => import('./admin/pages/Receipts'));
+const AdminCustomers = lazy(() => import('./admin/pages/Customers'));
 const AdminSettings = lazy(() => import('./admin/pages/Settings'));
 
 const AdminFallback = () => (
@@ -130,6 +132,7 @@ const AppContent = () => (
                     <Route path="/products/:id" element={<ProductDetail />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/payment/callback" element={<PaymentCallback />} />
+                    <Route path="/payment/momo" element={<PaymentMoMoPending />} />
                     <Route
                       path="/account"
                       element={
@@ -189,7 +192,16 @@ const AppContent = () => (
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="/admin/customers" element={<Navigate to="/admin" replace />} />
+                    <Route
+                      path="/admin/customers"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminCustomers />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
                     <Route
                       path="/admin/settings"

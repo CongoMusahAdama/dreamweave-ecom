@@ -8,9 +8,15 @@ const {
   getPaystackKeyStatus,
   frontendBaseUrl,
   paystackRequest,
+  chargeMobileMoney,
   verifyWebhookSignature,
   verifyTransactionReference,
 } = require('../lib/paystack');
+const {
+  formatPhoneForPaystack,
+  detectGhanaMoMoProvider,
+  moMoProviderLabel,
+} = require('../lib/phone');
 const {
   queueAdminNewOrder,
 } = require('../lib/orderNotifications');
@@ -129,6 +135,86 @@ router.post('/initialize', protect, [
 
     const reference = `HD-${order._id}-${Date.now()}`;
     const callbackUrl = `${frontendBaseUrl()}/payment/callback`;
+    const customerPhone = formatPhoneForPaystack(
+      shippingAddress.phone || req.user.phone || ''
+    );
+    const moMoProvider = detectGhanaMoMoProvider(customerPhone);
+    const metadata = {
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      customerId: req.user.id.toString(),
+      phone: customerPhone || undefined,
+      moMo_provider: moMoProvider || undefined,
+      custom_fields: [
+        {
+          display_name: 'Customer Name',
+          variable_name: 'customer_name',
+          value: shippingAddress.fullName || req.user.name || '',
+        },
+        ...(customerPhone
+          ? [{
+              display_name: 'Phone Number',
+              variable_name: 'phone',
+              value: customerPhone,
+            }]
+          : []),
+        ...(moMoProvider
+          ? [{
+              display_name: 'MoMo Network',
+              variable_name: 'momo_network',
+              value: moMoProviderLabel(moMoProvider),
+            }]
+          : []),
+      ],
+    };
+
+    if (customerPhone && moMoProvider) {
+      const charge = await chargeMobileMoney({
+        email: req.user.email,
+        amount,
+        reference,
+        phone: customerPhone,
+        provider: moMoProvider,
+        metadata,
+      });
+
+      const chargeStatus = charge.data?.status;
+      const chargeRef = charge.data?.reference || reference;
+
+      if (
+        charge.status
+        && ['pay_offline', 'pending', 'success'].includes(chargeStatus)
+      ) {
+        order.paystackReference = chargeRef;
+        await order.save();
+
+        if (chargeStatus === 'success') {
+          await verifyTransactionReference(chargeRef);
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            chargeMode: true,
+            reference: chargeRef,
+            displayText:
+              charge.data?.display_text
+              || `Check your phone (${moMoProviderLabel(moMoProvider)}) to approve the payment.`,
+            phone: customerPhone,
+            provider: moMoProvider,
+            providerLabel: moMoProviderLabel(moMoProvider),
+            amount,
+            orderId: order._id.toString(),
+            callbackUrl,
+          },
+        });
+      }
+
+      console.warn(
+        '[paystack] MoMo charge failed, falling back to hosted checkout:',
+        charge.message || chargeStatus
+      );
+    }
 
     const paystack = await paystackRequest('/transaction/initialize', {
       method: 'POST',
@@ -138,16 +224,15 @@ router.post('/initialize', protect, [
         currency: 'GHS',
         reference,
         callback_url: callbackUrl,
-        metadata: {
-          orderId: order._id.toString(),
-          orderNumber: order.orderNumber,
-          customerId: req.user.id.toString(),
-        },
+        channels: ['mobile_money', 'card'],
+        metadata,
       },
     });
 
     if (!paystack.status || !paystack.data?.reference) {
-      await ShopOrder.findByIdAndDelete(order._id);
+      if (isNewOrder) {
+        await ShopOrder.findByIdAndDelete(order._id);
+      }
       return res.status(502).json({
         success: false,
         message: paystack.message || 'Could not initialize Paystack payment',
@@ -160,12 +245,14 @@ router.post('/initialize', protect, [
     res.status(200).json({
       success: true,
       data: {
+        chargeMode: false,
         reference: paystack.data.reference,
         publicKey: process.env.PAYSTACK_PUBLIC_KEY,
         amount,
         orderId: order._id.toString(),
         authorizationUrl: paystack.data.authorization_url,
         callbackUrl,
+        phone: customerPhone || undefined,
       },
     });
   } catch (error) {
@@ -204,11 +291,20 @@ router.get('/verify/:reference', protect, async (req, res) => {
     const result = await verifyTransactionReference(reference);
 
     if (!result.ok) {
+      const txStatus = result.status || result.paystack?.data?.status;
+      if (txStatus === 'pending' || txStatus === 'ongoing' || txStatus === 'processing') {
+        return res.status(202).json({
+          success: false,
+          pending: true,
+          message: 'Awaiting payment approval on your phone',
+        });
+      }
+
       order.paymentStatus = 'failed';
       await order.save();
       return res.status(400).json({
         success: false,
-        message: result.message || 'Payment was not successful',
+        message: result.message || result.paystack?.data?.gateway_response || 'Payment was not successful',
       });
     }
 

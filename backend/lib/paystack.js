@@ -91,10 +91,28 @@ async function markOrderPaidByReference(reference) {
   return order;
 }
 
+async function chargeMobileMoney({ email, amount, reference, phone, provider, metadata }) {
+  return paystackRequest('/charge', {
+    method: 'POST',
+    body: {
+      email,
+      amount,
+      currency: 'GHS',
+      reference,
+      mobile_money: {
+        phone,
+        provider,
+      },
+      metadata,
+    },
+  });
+}
+
 async function verifyTransactionReference(reference) {
   const paystack = await paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`);
-  if (!paystack.status || paystack.data?.status !== 'success') {
-    return { ok: false, paystack };
+  const txStatus = paystack.data?.status;
+  if (!paystack.status || txStatus !== 'success') {
+    return { ok: false, paystack, status: txStatus };
   }
 
   const order = await ShopOrder.findOne({ paystackReference: reference });
@@ -115,6 +133,7 @@ module.exports = {
   getPaystackKeyStatus,
   frontendBaseUrl,
   paystackRequest,
+  chargeMobileMoney,
   verifyWebhookSignature,
   markOrderPaidByReference,
   verifyTransactionReference,

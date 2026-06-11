@@ -5,6 +5,7 @@ import {
   Images,
   FileText,
   Settings,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Overview', short: 'Home', icon: LayoutDashboard, exact: true },
   { href: '/admin/orders', label: 'Manage orders', short: 'Orders', icon: ShoppingCart },
+  { href: '/admin/customers', label: 'Customers', short: 'People', icon: Users },
   { href: '/admin/receipts', label: 'Order receipts', short: 'Receipts', icon: FileText },
   { href: '/admin/products', label: 'Product catalog', short: 'Stock', icon: Package },
   { href: '/admin/gallery', label: 'Site gallery', short: 'Photos', icon: Images },

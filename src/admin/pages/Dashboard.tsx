@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, ShoppingCart, Images } from 'lucide-react';
+import { Package, ShoppingCart, Images, Users } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminStatGrid from '../components/ui/AdminStatGrid';
@@ -29,6 +29,12 @@ const QUICK = [
     label: 'Track orders',
     hint: 'Update status & delivery',
     icon: ShoppingCart,
+  },
+  {
+    to: '/admin/customers',
+    label: 'Customers',
+    hint: 'Contact or manage accounts',
+    icon: Users,
   },
   {
     to: '/admin/products',

@@ -20,6 +20,7 @@ type AdminOrdersListProps = {
     page: number;
     totalPages: number;
     total: number;
+    pageSize: number;
     onPageChange: (page: number) => void;
   };
 };
@@ -192,7 +193,9 @@ const AdminOrdersList = ({
           page={pagination.page}
           totalPages={pagination.totalPages}
           total={pagination.total}
+          pageSize={pagination.pageSize}
           onPageChange={pagination.onPageChange}
+          itemLabel="orders"
         />
       ) : null}
 

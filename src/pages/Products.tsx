@@ -11,7 +11,10 @@ import { useCategories } from '@/contexts/CategoriesContext';
 import { sortShopProductsNewestFirst } from '@/lib/shop-catalog';
 import { SHOP_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 import { useCart } from '@/contexts/CartContext';
+import TablePagination from '@/components/ui/TablePagination';
 import { cn } from '@/lib/utils';
+
+const PRODUCTS_PAGE_SIZE = 12;
 
 const Products = () => {
   const { products: shopProducts, loading: catalogLoading } = useShopCatalog();
@@ -21,6 +24,7 @@ const Products = () => {
   const searchQuery = searchParams.get('search') || '';
   const categoryParam = searchParams.get('category') || 'all';
   const { cartCount } = useCart();
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const validKeys = new Set(['all', ...categories.map((c) => c.slug)]);
@@ -45,6 +49,20 @@ const Products = () => {
     return sortShopProductsNewestFirst(matched);
   }, [shopProducts, selectedCategory, searchQuery]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE));
+  const pagedProducts = filteredProducts.slice(
+    (page - 1) * PRODUCTS_PAGE_SIZE,
+    page * PRODUCTS_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <ShopHeader cartCount={cartCount} />
@@ -66,11 +84,23 @@ const Products = () => {
                 Loading collection…
               </p>
             ) : (
+            <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 sm:gap-x-6 md:gap-x-12 lg:gap-x-16 gap-y-10 sm:gap-y-14 md:gap-y-20 lg:gap-y-24">
-              {filteredProducts.map((product, index) => (
+              {pagedProducts.map((product, index) => (
                 <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              total={filteredProducts.length}
+              pageSize={PRODUCTS_PAGE_SIZE}
+              onPageChange={setPage}
+              itemLabel="products"
+              className="mt-10 border border-black/10"
+              showWhenSinglePage
+            />
+            </>
             )}
 
             {!catalogLoading && filteredProducts.length === 0 && (

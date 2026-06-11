@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { getDeliveryFromUser, isDeliveryComplete, deliveryToAddressPayload } from '@/lib/delivery';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { sweetError } from '@/lib/sweet-alert';
+import { MOMO_PAYMENT_SESSION_KEY } from '@/pages/PaymentMoMoPending';
 import type { DeliveryDetails, ShopOrderItem } from '@/types/customer';
 
 type CheckoutChannel = 'whatsapp' | 'paystack';
@@ -69,10 +70,14 @@ export function useShopCheckout() {
           message?: string;
           data: {
             reference: string;
-            publicKey: string;
+            publicKey?: string;
             amount: number;
             orderId: string;
             authorizationUrl?: string;
+            chargeMode?: boolean;
+            displayText?: string;
+            phone?: string;
+            providerLabel?: string;
           };
         }>('/api/payments/initialize', {
           method: 'POST',
@@ -83,6 +88,20 @@ export function useShopCheckout() {
             totalAmount,
           }),
         });
+
+        if (init.data.chargeMode) {
+          sessionStorage.setItem(
+            MOMO_PAYMENT_SESSION_KEY,
+            JSON.stringify({
+              reference: init.data.reference,
+              displayText: init.data.displayText,
+              phone: init.data.phone,
+              providerLabel: init.data.providerLabel,
+            })
+          );
+          window.location.assign('/payment/momo');
+          return;
+        }
 
         const { authorizationUrl } = init.data;
         if (!authorizationUrl) {

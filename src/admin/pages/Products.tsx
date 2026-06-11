@@ -21,7 +21,10 @@ import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
 import { resolveGalleryLabel } from '@/lib/product-images';
 import type { MongoProduct } from '../types/admin';
+import AdminPagination from '../components/ui/AdminPagination';
 import { cn } from '@/lib/utils';
+
+const PAGE_SIZE = 10;
 
 type FormState = {
   name: string;
@@ -85,7 +88,9 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string>('all');
+  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [mode, setMode] = useState<'idle' | 'add' | 'edit'>('idle');
   const [editingProduct, setEditingProduct] = useState<MongoProduct | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -103,26 +108,38 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     if (!token) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '50' });
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      });
       if (category !== 'all') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
 
       const res = await apiFetch<{
         success: boolean;
-        data: { products: MongoProduct[]; pagination: { total: number } };
+        data: {
+          products: MongoProduct[];
+          pagination: { total: number; totalPages: number };
+        };
       }>(`/api/admin/products?${params}`, { token });
 
       setProducts(res.data.products);
       setTotal(res.data.pagination.total);
+      setTotalPages(res.data.pagination.totalPages);
       onProductCount(res.data.pagination.total);
     } catch {
       setProducts([]);
       setTotal(0);
+      setTotalPages(1);
       onProductCount(0);
     } finally {
       setLoading(false);
     }
-  }, [token, category, search, onProductCount]);
+  }, [token, category, search, page, onProductCount]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [category, search]);
 
   useEffect(() => {
     loadProducts();
@@ -581,14 +598,24 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
           <p className="text-[10px] font-bold text-black/40 mt-2 uppercase">Tap Add product above</p>
         </div>
       ) : (
-        <AdminProductsTable
-          products={products}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-          onToggleSoldOut={handleToggleSoldOut}
-          onMarkSoldOut={handleMarkSoldOut}
-          updatingId={updatingId}
-        />
+        <>
+          <AdminProductsTable
+            products={products}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            onToggleSoldOut={handleToggleSoldOut}
+            onMarkSoldOut={handleMarkSoldOut}
+            updatingId={updatingId}
+          />
+          <AdminPagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+            itemLabel="products"
+          />
+        </>
       )}
     </>
   );

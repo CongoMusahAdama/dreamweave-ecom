@@ -7,6 +7,7 @@ import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import AccountOrdersTable from '@/components/account/AccountOrdersTable';
 import AccountWishlistGrid from '@/components/account/AccountWishlistGrid';
 import { ORDERS_PAGE_SIZE } from '@/components/account/OrdersTablePagination';
+import TablePagination from '@/components/ui/TablePagination';
 import DeliverySection from '@/components/account/DeliverySection';
 import ProfileSection from '@/components/account/ProfileSection';
 import AccountSidebar, { type AccountSection } from '@/components/account/AccountSidebar';
@@ -28,6 +29,7 @@ import { sweetInfo } from '@/lib/sweet-alert';
 import { useOrderPolling } from '@/hooks/useOrderPolling';
 
 const ORDERS_POLL_MS = 20_000;
+const WISHLIST_PAGE_SIZE = 6;
 
 const SECTION_TITLE: Record<AccountSection, string> = {
   orders: 'Your orders',
@@ -56,6 +58,7 @@ const Account = () => {
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [wishlistPage, setWishlistPage] = useState(1);
   const ordersSnapshotRef = useRef<Map<string, { status: string; paymentStatus?: string }>>(
     new Map()
   );
@@ -65,6 +68,20 @@ const Account = () => {
     () => catalogProducts.filter((p) => user?.wishlist?.includes(p.id)),
     [catalogProducts, user?.wishlist]
   );
+
+  const wishlistTotalPages = Math.max(1, Math.ceil(wishlistProducts.length / WISHLIST_PAGE_SIZE));
+  const pagedWishlistProducts = wishlistProducts.slice(
+    (wishlistPage - 1) * WISHLIST_PAGE_SIZE,
+    wishlistPage * WISHLIST_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setWishlistPage(1);
+  }, [wishlistProducts.length]);
+
+  useEffect(() => {
+    if (wishlistPage > wishlistTotalPages) setWishlistPage(wishlistTotalPages);
+  }, [wishlistPage, wishlistTotalPages]);
 
   const loadOrders = useCallback(
     async (page = 1, options?: { notify?: boolean; silent?: boolean }) => {
@@ -331,7 +348,19 @@ const Account = () => {
                       </a>
                     </div>
                   ) : (
-                    <AccountWishlistGrid products={wishlistProducts} />
+                    <>
+                      <AccountWishlistGrid products={pagedWishlistProducts} />
+                      <TablePagination
+                        page={wishlistPage}
+                        totalPages={wishlistTotalPages}
+                        total={wishlistProducts.length}
+                        pageSize={WISHLIST_PAGE_SIZE}
+                        onPageChange={setWishlistPage}
+                        itemLabel="items"
+                        className="mt-6 border border-black/10"
+                        showWhenSinglePage
+                      />
+                    </>
                   )}
                 </section>
               )}

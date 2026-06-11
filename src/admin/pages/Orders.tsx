@@ -224,6 +224,7 @@ const Orders = () => {
           page,
           totalPages,
           total,
+          pageSize: PAGE_SIZE,
           onPageChange: setPage,
         }}
       />

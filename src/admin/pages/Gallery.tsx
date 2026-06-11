@@ -9,9 +9,11 @@ import { useAdminConfirm } from '@/admin/contexts/AdminConfirmContext';
 import { apiFetch } from '@/lib/api';
 import { isLegacyLocalUpload, productImageUrl } from '@/lib/productImage';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
+import AdminPagination from '../components/ui/AdminPagination';
 import type { GalleryItem } from '../types/admin';
 
 const CATEGORIES = ['lifestyle', 'hoodies', 'tees', 'jerseys', 'caps', 'accessories'] as const;
+const PAGE_SIZE = 12;
 
 const emptyForm = { name: '', caption: '', category: 'lifestyle' };
 
@@ -26,6 +28,7 @@ const GalleryContent = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   const resetImage = () => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -56,6 +59,10 @@ const GalleryContent = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [items.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,8 +198,11 @@ const GalleryContent = () => {
           </p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {items.map((item) => (
+          {items
+            .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+            .map((item) => (
             <article key={item._id} className="border border-black/10 bg-white group relative">
               <img
                 src={productImageUrl(item.image)}
@@ -223,6 +233,15 @@ const GalleryContent = () => {
             </article>
           ))}
         </div>
+        <AdminPagination
+          page={page}
+          totalPages={Math.max(1, Math.ceil(items.length / PAGE_SIZE))}
+          total={items.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="images"
+        />
+        </>
       )}
     </>
   );
