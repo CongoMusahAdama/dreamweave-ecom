@@ -16,6 +16,14 @@ import {
   SITE_LOGO_NAV_WIDTH,
 } from '@/lib/brand';
 import type { SiteSettings } from '@/admin/types/admin';
+import {
+  DEFAULT_ABOUT_EYEBROW,
+  DEFAULT_ABOUT_PARAGRAPHS,
+  DEFAULT_ABOUT_TITLE,
+  DEFAULT_HERO_IMAGE,
+  DEFAULT_HERO_IMAGE_ALT,
+} from '@/lib/site-content';
+import { productImageUrl } from '@/lib/productImage';
 
 type SiteSettingsContextValue = {
   settings: SiteSettings;
@@ -26,6 +34,11 @@ type SiteSettingsContextValue = {
   logoAlt: string;
   logoWidth: number;
   logoHeight: number;
+  heroImageSrc: string;
+  heroImageAlt: string;
+  aboutEyebrow: string;
+  aboutTitle: string;
+  aboutParagraphs: string[];
 };
 
 const defaultSettings: SiteSettings = {
@@ -35,6 +48,11 @@ const defaultSettings: SiteSettings = {
   storeEmail: '',
   storePhone: '',
   storeCity: '',
+  heroImageUrl: DEFAULT_HERO_IMAGE,
+  heroImageAlt: DEFAULT_HERO_IMAGE_ALT,
+  aboutEyebrow: DEFAULT_ABOUT_EYEBROW,
+  aboutTitle: DEFAULT_ABOUT_TITLE,
+  aboutParagraphs: [...DEFAULT_ABOUT_PARAGRAPHS],
 };
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null);
@@ -72,6 +90,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SiteSettingsContextValue>(() => {
     const hasCustomLogo = Boolean(settings.logoUrl?.trim());
+    const heroPath = settings.heroImageUrl?.trim() || DEFAULT_HERO_IMAGE;
+    const paragraphs =
+      settings.aboutParagraphs?.length > 0
+        ? settings.aboutParagraphs
+        : DEFAULT_ABOUT_PARAGRAPHS;
+
     return {
       settings,
       loading,
@@ -81,6 +105,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       logoAlt: settings.logoAlt?.trim() || SITE_LOGO_ALT,
       logoWidth: SITE_LOGO_NAV_WIDTH,
       logoHeight: SITE_LOGO_NAV_HEIGHT,
+      heroImageSrc: productImageUrl(heroPath) || productImageUrl(DEFAULT_HERO_IMAGE),
+      heroImageAlt: settings.heroImageAlt?.trim() || DEFAULT_HERO_IMAGE_ALT,
+      aboutEyebrow: settings.aboutEyebrow?.trim() || DEFAULT_ABOUT_EYEBROW,
+      aboutTitle: settings.aboutTitle?.trim() || DEFAULT_ABOUT_TITLE,
+      aboutParagraphs: paragraphs,
     };
   }, [settings, loading, refresh]);
 

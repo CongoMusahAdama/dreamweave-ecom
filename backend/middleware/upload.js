@@ -39,6 +39,11 @@ const upload = multer({
 // Single image upload
 const uploadSingle = upload.single('image');
 
+const uploadSettingsFields = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'heroImage', maxCount: 1 },
+]);
+
 // Multiple images upload
 const uploadMultiple = upload.array('images', 5);
 
@@ -120,9 +125,34 @@ const deleteImage = async (urlOrPublicId) => {
   return deleteCloudinaryUrl(urlOrPublicId);
 };
 
+const uploadSettingsImages = (req, res, next) => {
+  uploadSettingsFields(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File size too large. Maximum size is 5MB',
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+    next();
+  });
+};
+
 module.exports = {
   uploadSingleImage,
+  uploadSettingsImages,
   uploadMultipleImages,
   deleteImage,
-  uploadToCloudinary
+  uploadToCloudinary,
 };

@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-
-const HERO_IMAGE = '/lovable-uploads/1a92e154-86f8-492d-b1ac-9e03726763f5.png';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 
 const Hero = () => {
+  const { heroImageSrc, heroImageAlt } = useSiteSettings();
+
   return (
     <section className="bg-white w-full pt-[6.5rem] sm:pt-[7.5rem] md:pt-[14.5rem] lg:pt-[16rem] overflow-x-hidden">
       <div className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 md:px-10 pb-10 sm:pb-12 md:pb-16 lg:pb-20">
         <figure className="relative w-full aspect-[4/5] sm:aspect-[3/4] md:aspect-[5/4] max-h-[min(78vh,820px)] overflow-hidden bg-[#f0f0f0]">
           <img
-            src={HERO_IMAGE}
-            alt="HARV DREAMS campaign"
+            src={heroImageSrc}
+            alt={heroImageAlt}
             className="hero-image-live h-full w-full object-cover object-center"
           />
 

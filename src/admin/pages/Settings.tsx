@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN } from '../lib/apiForm';
 import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
+import { formatAboutBody } from '@/lib/site-content';
 import type { SiteSettings } from '../types/admin';
 
 const Settings = () => {
@@ -16,14 +17,21 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [currentLogoUrl, setCurrentLogoUrl] = useState('');
+  const [currentHeroUrl, setCurrentHeroUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [form, setForm] = useState({
     logoAlt: 'HARV DREAMS',
     storeName: 'HARV DREAMS',
     storeEmail: '',
     storePhone: '',
     storeCity: '',
+    heroImageAlt: 'HARV DREAMS campaign',
+    aboutEyebrow: 'Our story',
+    aboutTitle: 'About HARV DREAMS',
+    aboutBody: '',
   });
 
   useEffect(() => {
@@ -38,12 +46,17 @@ const Settings = () => {
         if (cancelled) return;
         const s = res.data.settings;
         setCurrentLogoUrl(s.logoUrl || '');
+        setCurrentHeroUrl(s.heroImageUrl || '');
         setForm({
           logoAlt: s.logoAlt || 'HARV DREAMS',
           storeName: s.storeName || 'HARV DREAMS',
           storeEmail: s.storeEmail || '',
           storePhone: s.storePhone || '',
           storeCity: s.storeCity || '',
+          heroImageAlt: s.heroImageAlt || 'HARV DREAMS campaign',
+          aboutEyebrow: s.aboutEyebrow || 'Our story',
+          aboutTitle: s.aboutTitle || 'About HARV DREAMS',
+          aboutBody: formatAboutBody(s.aboutParagraphs || []),
         });
       } catch {
         if (!cancelled) setError('Could not load settings');
@@ -69,7 +82,12 @@ const Settings = () => {
       fd.append('storeEmail', form.storeEmail.trim());
       fd.append('storePhone', form.storePhone.trim());
       fd.append('storeCity', form.storeCity.trim());
+      fd.append('heroImageAlt', form.heroImageAlt.trim());
+      fd.append('aboutEyebrow', form.aboutEyebrow.trim());
+      fd.append('aboutTitle', form.aboutTitle.trim());
+      fd.append('aboutBody', form.aboutBody.trim());
       if (logoFile) fd.append('image', logoFile);
+      if (heroFile) fd.append('heroImage', heroFile);
 
       const res = await apiFormFetch<{
         success: boolean;
@@ -77,10 +95,18 @@ const Settings = () => {
       }>('/api/settings', fd, { method: 'PUT', token });
 
       setCurrentLogoUrl(res.data.settings.logoUrl || '');
+      setCurrentHeroUrl(res.data.settings.heroImageUrl || '');
       setLogoFile(null);
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setLogoPreview(null);
-      sweetSuccessCenter('Settings saved', 'Your store branding is updated.');
+      setHeroFile(null);
+      if (heroPreview) URL.revokeObjectURL(heroPreview);
+      setHeroPreview(null);
+      setForm((f) => ({
+        ...f,
+        aboutBody: formatAboutBody(res.data.settings.aboutParagraphs || []),
+      }));
+      sweetSuccessCenter('Settings saved', 'Your site content is updated.');
       window.dispatchEvent(new CustomEvent('harv:settings-changed'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -90,12 +116,13 @@ const Settings = () => {
   };
 
   const displayLogo = logoPreview || (currentLogoUrl ? productImageUrl(currentLogoUrl) : '');
+  const displayHero = heroPreview || (currentHeroUrl ? productImageUrl(currentHeroUrl) : '');
 
   return (
     <AdminLayout>
       <AdminPageHeader
         title="Settings"
-        description="Update your store logo, contact details, and branding."
+        description="Update branding, homepage hero, About page copy, and store contact details."
       />
 
       {loading ? (
@@ -107,6 +134,88 @@ const Settings = () => {
               {error}
             </p>
           ) : null}
+
+          <AdminPanel title="Homepage hero">
+            <div className="space-y-4">
+              {displayHero ? (
+                <div>
+                  <span className={ADMIN_LABEL}>Current hero image</span>
+                  <div className="mt-1 border border-black/15 bg-white overflow-hidden">
+                    <img
+                      src={displayHero}
+                      alt="Current homepage hero"
+                      className="w-full max-h-48 object-cover"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <AdminSingleImagePicker
+                file={heroFile}
+                preview={heroPreview}
+                onChange={(file, preview) => {
+                  setHeroFile(file);
+                  setHeroPreview(preview);
+                }}
+                label="Upload new hero image"
+                hint="Shown on the homepage banner. Landscape photos work best (JPG or PNG, max 5MB)."
+              />
+
+              <label className="block">
+                <span className={ADMIN_LABEL}>Hero image alt text</span>
+                <input
+                  className={ADMIN_INPUT}
+                  value={form.heroImageAlt}
+                  onChange={(e) => setForm((f) => ({ ...f, heroImageAlt: e.target.value }))}
+                />
+              </label>
+
+              <button type="submit" disabled={saving} className={ADMIN_BTN}>
+                {saving ? 'Saving…' : 'Save homepage hero'}
+              </button>
+            </div>
+          </AdminPanel>
+
+          <AdminPanel title="About page">
+            <div className="space-y-4">
+              <label className="block">
+                <span className={ADMIN_LABEL}>Eyebrow label</span>
+                <input
+                  className={ADMIN_INPUT}
+                  value={form.aboutEyebrow}
+                  onChange={(e) => setForm((f) => ({ ...f, aboutEyebrow: e.target.value }))}
+                  placeholder="Our story"
+                />
+              </label>
+
+              <label className="block">
+                <span className={ADMIN_LABEL}>Page title</span>
+                <input
+                  className={ADMIN_INPUT}
+                  value={form.aboutTitle}
+                  onChange={(e) => setForm((f) => ({ ...f, aboutTitle: e.target.value }))}
+                  placeholder="About HARV DREAMS"
+                />
+              </label>
+
+              <label className="block">
+                <span className={ADMIN_LABEL}>About copy</span>
+                <textarea
+                  className={`${ADMIN_INPUT} min-h-[200px] resize-y normal-case tracking-normal font-medium leading-relaxed`}
+                  value={form.aboutBody}
+                  onChange={(e) => setForm((f) => ({ ...f, aboutBody: e.target.value }))}
+                  placeholder="Write your story here. Leave a blank line between paragraphs."
+                />
+                <p className="text-[8px] font-bold uppercase text-black/40 mt-2">
+                  Separate paragraphs with a blank line
+                </p>
+              </label>
+
+              <button type="submit" disabled={saving} className={ADMIN_BTN}>
+                {saving ? 'Saving…' : 'Save about page'}
+              </button>
+            </div>
+          </AdminPanel>
 
           <AdminPanel title="Branding">
             <div className="space-y-4">

@@ -70,6 +70,11 @@ export interface SiteSettings {
   storeEmail: string;
   storePhone: string;
   storeCity: string;
+  heroImageUrl: string;
+  heroImageAlt: string;
+  aboutEyebrow: string;
+  aboutTitle: string;
+  aboutParagraphs: string[];
 }
 
 export interface GalleryItem {
