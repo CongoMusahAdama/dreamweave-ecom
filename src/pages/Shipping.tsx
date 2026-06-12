@@ -5,6 +5,7 @@ import Footer from '@/components/layout/Footer';
 import PaymentMethods from '@/components/layout/PaymentMethods';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 import { SOCIAL_LINKS } from '@/lib/social';
 import { SITE_HEADER_OFFSET_PT, HEADER_OFFSET_SCROLL_MT, PAGE_X } from '@/lib/page-layout';
 import ScrollReveal from '@/components/ui/ScrollReveal';
@@ -28,6 +29,7 @@ const bullet = (text: string) => (
 
 const Shipping = () => {
   const location = useLocation();
+  const { storeEmail } = useSiteSettings();
 
   useEffect(() => {
     if (location.hash) {
@@ -113,7 +115,7 @@ const Shipping = () => {
                 Shipping
               </Link>
               <a
-                href="mailto:hello@harvdreams.com"
+                href={`mailto:${storeEmail}`}
                 className="text-[10px] font-bold tracking-[0.2em] uppercase hover:opacity-50 transition-opacity"
               >
                 Contact

@@ -22,6 +22,10 @@ import {
   DEFAULT_ABOUT_TITLE,
   DEFAULT_HERO_IMAGE,
   DEFAULT_HERO_IMAGE_ALT,
+  DEFAULT_STORE_CITY,
+  DEFAULT_STORE_EMAIL,
+  resolveStoreCity,
+  resolveStoreEmail,
 } from '@/lib/site-content';
 import { productImageUrl } from '@/lib/productImage';
 
@@ -39,15 +43,18 @@ type SiteSettingsContextValue = {
   aboutEyebrow: string;
   aboutTitle: string;
   aboutParagraphs: string[];
+  storeEmail: string;
+  storePhone: string;
+  storeCity: string;
 };
 
 const defaultSettings: SiteSettings = {
   logoUrl: '',
   logoAlt: SITE_LOGO_ALT,
   storeName: 'HARV DREAMS',
-  storeEmail: '',
+  storeEmail: DEFAULT_STORE_EMAIL,
   storePhone: '',
-  storeCity: '',
+  storeCity: DEFAULT_STORE_CITY,
   heroImageUrl: DEFAULT_HERO_IMAGE,
   heroImageAlt: DEFAULT_HERO_IMAGE_ALT,
   aboutEyebrow: DEFAULT_ABOUT_EYEBROW,
@@ -110,6 +117,9 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       aboutEyebrow: settings.aboutEyebrow?.trim() || DEFAULT_ABOUT_EYEBROW,
       aboutTitle: settings.aboutTitle?.trim() || DEFAULT_ABOUT_TITLE,
       aboutParagraphs: paragraphs,
+      storeEmail: resolveStoreEmail(settings.storeEmail),
+      storePhone: settings.storePhone?.trim() || '',
+      storeCity: resolveStoreCity(settings.storeCity),
     };
   }, [settings, loading, refresh]);
 

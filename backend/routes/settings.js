@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const SiteSettings = require('../models/SiteSettings');
-const { DEFAULT_ABOUT_PARAGRAPHS } = require('../models/SiteSettings');
+const { DEFAULT_ABOUT_PARAGRAPHS, DEFAULT_STORE_EMAIL, DEFAULT_STORE_CITY } = require('../models/SiteSettings');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSettingsImages } = require('../middleware/upload');
 const { normalizeStoredImageUrl } = require('../lib/imageUrls');
@@ -30,9 +30,9 @@ function serializeSettings(doc) {
     logoUrl: raw.logoUrl ? normalizeStoredImageUrl(raw.logoUrl) : '',
     logoAlt: raw.logoAlt || 'HARV DREAMS',
     storeName: raw.storeName || 'HARV DREAMS',
-    storeEmail: raw.storeEmail || '',
+    storeEmail: raw.storeEmail?.trim() || DEFAULT_STORE_EMAIL,
     storePhone: raw.storePhone || '',
-    storeCity: raw.storeCity || '',
+    storeCity: raw.storeCity?.trim() || DEFAULT_STORE_CITY,
     heroImageUrl: raw.heroImageUrl
       ? normalizeStoredImageUrl(raw.heroImageUrl)
       : '/lovable-uploads/cover.JPG.jpeg',

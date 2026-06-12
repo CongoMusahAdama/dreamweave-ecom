@@ -1,3 +1,15 @@
+export const DEFAULT_STORE_EMAIL = 'harvdreamsww@gmail.com';
+
+export const DEFAULT_STORE_CITY = 'Accra, GH';
+
+export function resolveStoreEmail(email?: string) {
+  return email?.trim() || DEFAULT_STORE_EMAIL;
+}
+
+export function resolveStoreCity(city?: string) {
+  return city?.trim() || DEFAULT_STORE_CITY;
+}
+
 export const DEFAULT_HERO_IMAGE = '/lovable-uploads/cover.JPG.jpeg';
 
 export const DEFAULT_HERO_IMAGE_ALT = 'HARV DREAMS campaign';

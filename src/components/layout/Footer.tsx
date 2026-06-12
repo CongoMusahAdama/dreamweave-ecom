@@ -2,6 +2,7 @@ import { Instagram, Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PaymentMethods from '@/components/layout/PaymentMethods';
 import SiteLogo from '@/components/brand/SiteLogo';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 import { SOCIAL_LINKS } from '@/lib/social';
 
 function TikTokIcon({ className }: { className?: string }) {
@@ -22,6 +23,7 @@ function XIcon({ className }: { className?: string }) {
 
 const Footer = () => {
   const year = new Date().getFullYear();
+  const { storeEmail, storeCity } = useSiteSettings();
   return (
     <footer className="bg-army-green-dark text-white pt-24 pb-12 border-t border-black/20">
       <div className="container mx-auto px-4">
@@ -123,7 +125,7 @@ const Footer = () => {
             Shipping
           </Link>
           <a
-            href="mailto:hello@harvdreams.com"
+            href={`mailto:${storeEmail}`}
             className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 hover:text-white transition-colors"
           >
             Contact
@@ -140,11 +142,11 @@ const Footer = () => {
           <div className="flex items-center space-x-8">
             <div className="flex items-center text-[10px] tracking-[0.2em] text-white/30 uppercase">
               <MapPin className="w-3 h-3 mr-2" strokeWidth={1.5} />
-              Accra, GH
+              {storeCity}
             </div>
             <div className="flex items-center text-[10px] tracking-[0.2em] text-white/30 uppercase">
               <Mail className="w-3 h-3 mr-2" strokeWidth={1.5} />
-              hello@harvdreams.com
+              {storeEmail}
             </div>
           </div>
         </div>

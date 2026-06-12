@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { ADMIN_LABEL } from '@/admin/lib/apiForm';
+import { MAX_PRODUCT_IMAGES, MAX_UPLOAD_BYTES, formatMaxUploadSize } from '@/lib/upload-limits';
 import { cn } from '@/lib/utils';
 
 export type ImageRole = 'front' | 'back' | 'additional';
@@ -18,15 +19,19 @@ type ProductImagePickerProps = {
   images: ProductImageEntry[];
   onChange: (images: ProductImageEntry[]) => void;
   maxImages?: number;
+  /** When editing, new uploads are extra angles (not front/back slots) */
+  appendOnly?: boolean;
   /** Prefills empty thumbnail labels (e.g. product colors: Black, White) */
   colorSuggestions?: string[];
+  onReject?: (message: string) => void;
 };
 
 function nextId() {
   return `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function roleForIndex(index: number): ImageRole {
+function roleForIndex(index: number, appendOnly: boolean): ImageRole {
+  if (appendOnly) return 'additional';
   if (index === 0) return 'front';
   if (index === 1) return 'back';
   return 'additional';
@@ -40,8 +45,10 @@ function labelSuggestion(colors: string[] | undefined, index: number): string {
 const ProductImagePicker = ({
   images,
   onChange,
-  maxImages = 6,
+  maxImages = MAX_PRODUCT_IMAGES,
+  appendOnly = false,
   colorSuggestions = [],
+  onReject,
 }: ProductImagePickerProps) => {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +64,6 @@ const ProductImagePicker = ({
     };
   }, []);
 
-  // Prefill empty labels when colors are added after images (e.g. Black, White for caps)
   useEffect(() => {
     if (!colorSuggestions.length) return;
 
@@ -80,23 +86,38 @@ const ProductImagePicker = ({
 
     const remaining = maxImages - images.length;
     const picked = Array.from(files).slice(0, remaining);
+    const accepted: File[] = [];
+
+    for (const file of picked) {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        onReject?.(
+          `"${file.name}" is too large. Each image must be ${formatMaxUploadSize()} or less. Try a smaller photo from your gallery.`
+        );
+        continue;
+      }
+      accepted.push(file);
+    }
+
+    if (!accepted.length) return;
 
     const startIndex = images.length;
-    const next = picked.map((file, index) => {
+    const next = accepted.map((file, index) => {
       const absoluteIndex = startIndex + index;
       return {
         id: nextId(),
         file,
         preview: URL.createObjectURL(file),
-        role: roleForIndex(absoluteIndex),
+        role: roleForIndex(absoluteIndex, appendOnly),
         label: labelSuggestion(colorSuggestions, absoluteIndex),
       };
     });
 
-    onChange([...images, ...next].map((img, index) => ({
-      ...img,
-      role: roleForIndex(index),
-    })));
+    onChange(
+      [...images, ...next].map((img, index) => ({
+        ...img,
+        role: roleForIndex(index, appendOnly),
+      }))
+    );
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -110,7 +131,7 @@ const ProductImagePicker = ({
     onChange(
       images
         .filter((img) => img.id !== id)
-        .map((img, index) => ({ ...img, role: roleForIndex(index) }))
+        .map((img, index) => ({ ...img, role: roleForIndex(index, appendOnly) }))
     );
   };
 
@@ -118,8 +139,10 @@ const ProductImagePicker = ({
     <div>
       <span className={ADMIN_LABEL}>Product images *</span>
       <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider mb-3">
-        Add one photo per color or view. Name each thumbnail (e.g. Black, White) — not &quot;Front&quot; or
-        &quot;Back&quot;. This text appears under thumbnails on the shop.
+        Add one photo per angle or color (up to {maxImages}). Max {formatMaxUploadSize()} each.
+        {appendOnly
+          ? ' New photos are added as extra views on the product page.'
+          : ' First photo is the main view, second is the next angle — all others appear as thumbnails.'}
       </p>
 
       {images.length > 0 && (

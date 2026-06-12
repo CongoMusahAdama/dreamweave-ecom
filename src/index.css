@@ -328,10 +328,10 @@
 /* Hero image subtle motion */
 @keyframes heroKenBurns {
   0% {
-    transform: scale(1.03);
+    transform: scale(1);
   }
   100% {
-    transform: scale(1.08);
+    transform: scale(1.02);
   }
 }
 

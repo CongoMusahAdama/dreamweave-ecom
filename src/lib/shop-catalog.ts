@@ -43,8 +43,12 @@ export function mapApiProductToShop(p: ApiProduct): ShopProduct | null {
   if (!front) return null;
 
   const back = productImageUrl(p.images?.back) || front;
-  const extra = (p.images?.additional || []).map(productImageUrl).filter(Boolean);
-  const images = Array.from(new Set([front, back, ...extra]));
+  const extras = (p.images?.additional || []).map(productImageUrl).filter(Boolean);
+  const images = [
+    front,
+    ...(back !== front ? [back] : []),
+    ...extras.filter((url) => url !== front && url !== back),
+  ];
 
   const sizesFromDb = p.sizes?.map((s) => s.name).filter(Boolean);
   const sizes =

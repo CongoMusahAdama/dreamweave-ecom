@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { configureCloudinary } = require('../lib/cloudinaryClient');
+const { MAX_UPLOAD_BYTES, MAX_PRODUCT_IMAGES } = require('../lib/constants');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -9,6 +10,12 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 const cloudinary = configureCloudinary();
+
+const MAX_UPLOAD_MB = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
+
+function fileTooLargeMessage() {
+  return `File size too large. Maximum size is ${MAX_UPLOAD_MB}MB per image`;
+}
 
 // Configure storage
 const storage = multer.diskStorage({
@@ -18,14 +25,14 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.originalname.split('.').pop());
-  }
+  },
 });
 
 // Configure multer
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: MAX_UPLOAD_BYTES,
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -33,7 +40,7 @@ const upload = multer({
     } else {
       cb(new Error('Only image files are allowed'), false);
     }
-  }
+  },
 });
 
 // Single image upload
@@ -45,7 +52,7 @@ const uploadSettingsFields = upload.fields([
 ]);
 
 // Multiple images upload
-const uploadMultiple = upload.array('images', 5);
+const uploadMultiple = upload.array('images', MAX_PRODUCT_IMAGES);
 
 // Wrapper for single upload with error handling
 const uploadSingleImage = (req, res, next) => {
@@ -54,17 +61,17 @@ const uploadSingleImage = (req, res, next) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
-          message: 'File size too large. Maximum size is 5MB'
+          message: fileTooLargeMessage(),
         });
       }
       return res.status(400).json({
         success: false,
-        message: err.message
+        message: err.message,
       });
     } else if (err) {
       return res.status(400).json({
         success: false,
-        message: err.message
+        message: err.message,
       });
     }
     next();
@@ -78,23 +85,23 @@ const uploadMultipleImages = (req, res, next) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
-          message: 'File size too large. Maximum size is 5MB'
+          message: fileTooLargeMessage(),
         });
       }
       if (err.code === 'LIMIT_FILE_COUNT') {
         return res.status(400).json({
           success: false,
-          message: 'Too many files. Maximum is 5 files'
+          message: `Too many files. Maximum is ${MAX_PRODUCT_IMAGES} images`,
         });
       }
       return res.status(400).json({
         success: false,
-        message: err.message
+        message: err.message,
       });
     } else if (err) {
       return res.status(400).json({
         success: false,
-        message: err.message
+        message: err.message,
       });
     }
     next();
@@ -107,9 +114,9 @@ const uploadToCloudinary = async (file, folder = 'harv-dreams') => {
     const result = await cloudinary.uploader.upload(file, {
       folder: folder,
       transformation: [
-        { width: 800, height: 800, crop: 'limit' },
-        { quality: 'auto' }
-      ]
+        { width: 1600, height: 1600, crop: 'limit' },
+        { quality: 'auto:good' },
+      ],
     });
     return result;
   } catch (error) {
@@ -131,7 +138,7 @@ const uploadSettingsImages = (req, res, next) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
-          message: 'File size too large. Maximum size is 5MB',
+          message: fileTooLargeMessage(),
         });
       }
       return res.status(400).json({
@@ -155,4 +162,6 @@ module.exports = {
   uploadMultipleImages,
   deleteImage,
   uploadToCloudinary,
+  MAX_UPLOAD_BYTES,
+  MAX_PRODUCT_IMAGES,
 };

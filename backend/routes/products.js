@@ -12,43 +12,24 @@ const { MAX_PRODUCT_PAGE_LIMIT } = require('../lib/constants');
 
 const ALLOWED_SORT_FIELDS = new Set(['createdAt', 'price', 'name', 'stock']);
 
-async function buildImagesFromUploads(files, rolesInput) {
-  let roles = [];
-  if (rolesInput) {
-    try {
-      roles = JSON.parse(rolesInput);
-    } catch {
-      roles = String(rolesInput).split(',').map((r) => r.trim());
-    }
+async function buildImagesFromUploads(files) {
+  const uploaded = await Promise.all(
+    files.map((file) => resolveUploadedImageUrl(file, 'products'))
+  );
+
+  if (!uploaded.length) {
+    return { front: '', back: '', additional: [] };
   }
 
-  const images = { front: '', back: '', additional: [] };
-  const uploaded = [];
+  return {
+    front: uploaded[0],
+    back: uploaded[1] || uploaded[0],
+    additional: uploaded.slice(2),
+  };
+}
 
-  const urls = await Promise.all(files.map((file) => resolveUploadedImageUrl(file, 'products')));
-
-  for (let i = 0; i < files.length; i++) {
-    const url = urls[i];
-    uploaded.push(url);
-    const role = roles[i] || (i === 0 ? 'front' : 'additional');
-
-    if (role === 'front') {
-      images.front = url;
-    } else if (role === 'back') {
-      images.back = url;
-    } else {
-      images.additional.push(url);
-    }
-  }
-
-  if (!images.front && uploaded.length > 0) {
-    images.front = uploaded[0];
-  }
-  if (!images.back) {
-    images.back = images.front;
-  }
-
-  return images;
+async function appendUploadedImages(files) {
+  return Promise.all(files.map((file) => resolveUploadedImageUrl(file, 'products')));
 }
 
 const ALLOWED_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']);
@@ -334,7 +315,7 @@ router.post('/', protect, authorize('admin'), uploadMultipleImages, [
       });
     }
 
-    const images = await buildImagesFromUploads(files, imageRoles);
+    const images = await buildImagesFromUploads(files);
     const parsedImageLabels = parseImageLabelsFromBody(imageLabels);
 
     const salePrice = parseFloat(price);
@@ -433,15 +414,8 @@ router.put('/:id', protect, authorize('admin'), uploadMultipleImages, [
 
     const files = req.files?.length ? req.files : req.file ? [req.file] : [];
     if (files.length) {
-      const newImages = await buildImagesFromUploads(files, req.body.imageRoles);
-      if (newImages.front) product.images.front = newImages.front;
-      if (newImages.back) product.images.back = newImages.back;
-      if (newImages.additional?.length) {
-        product.images.additional = [
-          ...(product.images.additional || []),
-          ...newImages.additional,
-        ];
-      }
+      const extraUrls = await appendUploadedImages(files);
+      product.images.additional = [...(product.images.additional || []), ...extraUrls];
     }
 
     const { name, description, price, category, stock, originalPrice, discount, tags, imageLabels, soldOut, colors, sizes } = req.body;

@@ -8,7 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN } from '../lib/apiForm';
 import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
-import { formatAboutBody } from '@/lib/site-content';
+import { formatAboutBody, DEFAULT_STORE_CITY, DEFAULT_STORE_EMAIL } from '@/lib/site-content';
 import type { SiteSettings } from '../types/admin';
 
 const Settings = () => {
@@ -25,9 +25,9 @@ const Settings = () => {
   const [form, setForm] = useState({
     logoAlt: 'HARV DREAMS',
     storeName: 'HARV DREAMS',
-    storeEmail: '',
+    storeEmail: DEFAULT_STORE_EMAIL,
     storePhone: '',
-    storeCity: '',
+    storeCity: DEFAULT_STORE_CITY,
     heroImageAlt: 'HARV DREAMS campaign',
     aboutEyebrow: 'Our story',
     aboutTitle: 'About HARV DREAMS',

@@ -60,14 +60,6 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
               />
             )}
 
-            {!isSoldOut && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5] opacity-0 group-hover/card:opacity-100 transition-opacity duration-300">
-                <span className="text-[9px] md:text-[10px] font-bold tracking-[0.2em] uppercase text-black bg-white/95 px-3 py-2 border border-black/10 translate-y-1 group-hover/card:translate-y-0 transition-transform duration-300">
-                  View details
-                </span>
-              </div>
-            )}
-
             {isSoldOut && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 bg-white/80">
                 <span className="bg-black text-white text-[9px] md:text-[10px] font-bold tracking-[0.2em] uppercase px-4 py-3 min-w-[90px] text-center leading-tight">

@@ -4,9 +4,11 @@ import Footer from '@/components/layout/Footer';
 import PaymentMethods from '@/components/layout/PaymentMethods';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 import { SITE_HEADER_OFFSET_PT, PAGE_X } from '@/lib/page-layout';
 
 const Privacy = () => {
+  const { storeEmail } = useSiteSettings();
   return (
     <div className="min-h-screen bg-white text-black">
       <Header variant="solid" />
@@ -27,8 +29,8 @@ const Privacy = () => {
               We do not sell your personal data. Information may be shared with payment and
               shipping partners solely to fulfill your order. You may request access or deletion
               of your data by emailing{' '}
-              <a href="mailto:hello@harvdreams.com" className="underline hover:opacity-60">
-                hello@harvdreams.com
+              <a href={`mailto:${storeEmail}`} className="underline hover:opacity-60">
+                {storeEmail}
               </a>
               .
             </p>
@@ -48,7 +50,7 @@ const Privacy = () => {
               Shipping
             </Link>
             <a
-              href="mailto:hello@harvdreams.com"
+              href={`mailto:${storeEmail}`}
               className="text-[10px] font-bold tracking-[0.2em] uppercase hover:opacity-50"
             >
               Contact

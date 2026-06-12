@@ -19,7 +19,7 @@ import { apiFetch } from '@/lib/api';
 import { apiFormFetch, ADMIN_INPUT, ADMIN_LABEL, ADMIN_BTN, ADMIN_BTN_OUTLINE } from '../lib/apiForm';
 import { sweetSuccessCenter } from '@/lib/sweet-alert';
 import { productImageUrl } from '../lib/productImage';
-import { resolveGalleryLabel } from '@/lib/product-images';
+import { formatMaxUploadSize, MAX_PRODUCT_IMAGES } from '@/lib/upload-limits';
 import type { MongoProduct } from '../types/admin';
 import AdminPagination from '../components/ui/AdminPagination';
 import { cn } from '@/lib/utils';
@@ -174,9 +174,9 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     setEditingProduct(product);
     setForm(productToForm(product));
     setExistingImageLabels({
-      front: resolveGalleryLabel(product.imageLabels?.front, 0, product.colors?.map((c) => c.name)),
-      back: resolveGalleryLabel(product.imageLabels?.back, 1, product.colors?.map((c) => c.name)),
-      additional: [...(product.imageLabels?.additional || [])],
+      front: product.imageLabels?.front?.trim() || '',
+      back: product.imageLabels?.back?.trim() || '',
+      additional: (product.imageLabels?.additional || []).map((label) => label?.trim() || ''),
     });
     setError('');
     setMode('edit');
@@ -189,11 +189,18 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
       additional: [...existingImageLabels.additional],
     };
 
+    if (mode === 'add') {
+      productImages.forEach((img, index) => {
+        const label = img.label.trim();
+        if (index === 0) labels.front = label;
+        else if (index === 1) labels.back = label;
+        else labels.additional.push(label);
+      });
+      return labels;
+    }
+
     for (const img of productImages) {
-      const label = img.label.trim();
-      if (img.role === 'front') labels.front = label;
-      else if (img.role === 'back') labels.back = label;
-      else labels.additional.push(label);
+      labels.additional.push(img.label.trim());
     }
 
     return labels;
@@ -236,17 +243,24 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     }
 
     if (mode === 'edit' && editingProduct) {
-      const slots: ImageRole[] = [];
-      if (editingProduct.images?.front) slots.push('front');
-      if (
-        editingProduct.images?.back &&
-        editingProduct.images.back !== editingProduct.images.front
-      ) {
-        slots.push('back');
-      }
-      if (slots.some((slot) => !existingImageLabels[slot]?.trim())) {
+      if (editingProduct.images?.front && !existingImageLabels.front.trim()) {
         setError('Add a view label for each current image (e.g. Black, White)');
         return;
+      }
+      if (
+        editingProduct.images?.back &&
+        editingProduct.images.back !== editingProduct.images.front &&
+        !existingImageLabels.back.trim()
+      ) {
+        setError('Add a view label for each current image (e.g. Black, White)');
+        return;
+      }
+      const extraCount = (editingProduct.images?.additional || []).length;
+      for (let i = 0; i < extraCount; i++) {
+        if (!existingImageLabels.additional[i]?.trim()) {
+          setError('Add a view label for each current image (e.g. Black, White)');
+          return;
+        }
       }
     }
 
@@ -270,7 +284,6 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
 
       if (productImages.length) {
         productImages.forEach((img) => fd.append('images', img.file));
-        fd.append('imageRoles', JSON.stringify(productImages.map((img) => img.role)));
       }
       fd.append('imageLabels', JSON.stringify(buildImageLabelsPayload()));
 
@@ -364,7 +377,12 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
     void patchInventory(product._id, { soldOut: true });
   };
 
-  const existingImages: { key: string; src: string; slot: ImageRole }[] = [];
+  const existingImages: {
+    key: string;
+    src: string;
+    slot: 'front' | 'back' | 'additional';
+    additionalIndex?: number;
+  }[] = [];
   if (editingProduct?.images?.front) {
     existingImages.push({
       key: 'front',
@@ -382,6 +400,15 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
       src: productImageUrl(editingProduct.images.back),
     });
   }
+  (editingProduct?.images?.additional || []).forEach((url, index) => {
+    if (!url?.trim()) return;
+    existingImages.push({
+      key: `additional-${index}`,
+      slot: 'additional',
+      additionalIndex: index,
+      src: productImageUrl(url),
+    });
+  });
 
   return (
     <>
@@ -430,7 +457,7 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
               <div>
                 <span className={ADMIN_LABEL}>Current images</span>
                 <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider mb-2">
-                  Name each thumbnail with the color (e.g. Black, White). Shown under photos on the shop.
+                  Name each thumbnail (e.g. Black, Front, Side). Shown under photos on the shop exactly as typed.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
                   {existingImages.map((img, index) => (
@@ -446,13 +473,27 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
                         </span>
                         <input
                           type="text"
-                          value={existingImageLabels[img.slot]}
-                          onChange={(e) =>
-                            setExistingImageLabels((prev) => ({
-                              ...prev,
-                              [img.slot]: e.target.value,
-                            }))
+                          value={
+                            img.slot === 'additional'
+                              ? existingImageLabels.additional[img.additionalIndex ?? 0] || ''
+                              : existingImageLabels[img.slot]
                           }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (img.slot === 'additional') {
+                              const idx = img.additionalIndex ?? 0;
+                              setExistingImageLabels((prev) => {
+                                const additional = [...prev.additional];
+                                additional[idx] = value;
+                                return { ...prev, additional };
+                              });
+                            } else {
+                              setExistingImageLabels((prev) => ({
+                                ...prev,
+                                [img.slot]: value,
+                              }));
+                            }
+                          }}
                           placeholder={form.colors[index]?.trim() || 'e.g. Black'}
                           className="mt-1 w-full border border-black/15 bg-white px-2 py-2 min-h-[40px] text-[10px] font-bold text-black"
                           required
@@ -470,8 +511,14 @@ const ProductsContent = ({ onProductCount }: ProductsContentProps) => {
             <ProductImagePicker
               images={productImages}
               onChange={setProductImages}
-              maxImages={5}
+              maxImages={
+                mode === 'edit'
+                  ? Math.max(0, MAX_PRODUCT_IMAGES - existingImages.length)
+                  : MAX_PRODUCT_IMAGES
+              }
+              appendOnly={mode === 'edit'}
               colorSuggestions={form.colors}
+              onReject={(message) => setError(message)}
             />
             {mode === 'add' && productImages.length === 0 ? (
               <p className="text-[8px] font-bold uppercase text-black/40 -mt-2">Required for new products</p>

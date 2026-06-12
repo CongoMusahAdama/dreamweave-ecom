@@ -11,16 +11,14 @@ export type GalleryImage = {
   label: string;
 };
 
-const GENERIC_VIEW_LABELS = /^(front|back|primary|secondary)$/i;
-
-/** Prefer admin label; fall back to product color name when label is empty or generic */
+/** Prefer admin label; fall back to product color name only when label is empty */
 function resolveGalleryLabel(
   rawLabel: string | undefined,
   colorIndex: number,
   colors?: string[]
 ): string {
   const trimmed = rawLabel?.trim() || '';
-  if (trimmed && !GENERIC_VIEW_LABELS.test(trimmed)) return trimmed;
+  if (trimmed) return trimmed;
   return colors?.[colorIndex]?.trim() || '';
 }
 
@@ -71,4 +69,4 @@ export function galleryImageLabel(index: number, total: number): string {
   return '';
 }
 
-export { GENERIC_VIEW_LABELS, resolveGalleryLabel };
+export { resolveGalleryLabel };
