@@ -28,6 +28,16 @@ function frontendBaseUrl() {
   return (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 }
 
+/** Unique per Paystack API call — never reuse across charge + initialize in one checkout. */
+function generatePaystackReference(orderId) {
+  const suffix = crypto.randomBytes(4).toString('hex');
+  return `HD-${orderId}-${Date.now()}-${suffix}`;
+}
+
+function isDuplicateReferenceError(message) {
+  return String(message || '').toLowerCase().includes('duplicate');
+}
+
 async function paystackRequest(path, options = {}) {
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) {
@@ -132,6 +142,8 @@ module.exports = {
   isPaystackConfigured,
   getPaystackKeyStatus,
   frontendBaseUrl,
+  generatePaystackReference,
+  isDuplicateReferenceError,
   paystackRequest,
   chargeMobileMoney,
   verifyWebhookSignature,

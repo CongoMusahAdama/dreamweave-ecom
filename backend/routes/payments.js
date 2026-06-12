@@ -9,6 +9,8 @@ const {
   frontendBaseUrl,
   paystackRequest,
   chargeMobileMoney,
+  generatePaystackReference,
+  isDuplicateReferenceError,
   verifyWebhookSignature,
   verifyTransactionReference,
 } = require('../lib/paystack');
@@ -133,7 +135,6 @@ router.post('/initialize', protect, [
       queueAdminNewOrder(order);
     }
 
-    const reference = `HD-${order._id}-${Date.now()}`;
     const callbackUrl = `${frontendBaseUrl()}/payment/callback`;
     const customerPhone = formatPhoneForPaystack(
       shippingAddress.phone || req.user.phone || ''
@@ -169,17 +170,18 @@ router.post('/initialize', protect, [
     };
 
     if (customerPhone && moMoProvider) {
+      const chargeReference = generatePaystackReference(order._id);
       const charge = await chargeMobileMoney({
         email: req.user.email,
         amount,
-        reference,
+        reference: chargeReference,
         phone: customerPhone,
         provider: moMoProvider,
         metadata,
       });
 
       const chargeStatus = charge.data?.status;
-      const chargeRef = charge.data?.reference || reference;
+      const chargeRef = charge.data?.reference || chargeReference;
 
       if (
         charge.status
@@ -216,18 +218,38 @@ router.post('/initialize', protect, [
       );
     }
 
-    const paystack = await paystackRequest('/transaction/initialize', {
+    let initReference = generatePaystackReference(order._id);
+    let paystack = await paystackRequest('/transaction/initialize', {
       method: 'POST',
       body: {
         email: req.user.email,
         amount,
         currency: 'GHS',
-        reference,
+        reference: initReference,
         callback_url: callbackUrl,
         channels: ['mobile_money', 'card'],
         metadata,
       },
     });
+
+    if (
+      (!paystack.status || !paystack.data?.reference)
+      && isDuplicateReferenceError(paystack.message)
+    ) {
+      initReference = generatePaystackReference(order._id);
+      paystack = await paystackRequest('/transaction/initialize', {
+        method: 'POST',
+        body: {
+          email: req.user.email,
+          amount,
+          currency: 'GHS',
+          reference: initReference,
+          callback_url: callbackUrl,
+          channels: ['mobile_money', 'card'],
+          metadata,
+        },
+      });
+    }
 
     if (!paystack.status || !paystack.data?.reference) {
       if (isNewOrder) {
