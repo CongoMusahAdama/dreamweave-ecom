@@ -20,6 +20,7 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
   const frontImage = gallery[0]?.url;
   const backImage = gallery.length > 1 ? gallery[1]?.url : null;
   const hasBackView = Boolean(backImage && backImage !== frontImage);
+  const shouldPrioritizeImage = index < 4;
 
   return (
     <article className="w-full">
@@ -49,7 +50,9 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
                 'max-h-full max-w-full w-full h-full object-contain p-2 md:p-3 transition-all duration-500 ease-out',
                 hasBackView && !isSoldOut && 'group-hover/card:opacity-0 group-hover/card:scale-105'
               )}
-              loading="lazy"
+              loading={shouldPrioritizeImage ? 'eager' : 'lazy'}
+              fetchPriority={shouldPrioritizeImage ? 'high' : 'auto'}
+              decoding="async"
             />
             {hasBackView && !isSoldOut && (
               <img
@@ -57,6 +60,7 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
                 alt=""
                 className="absolute inset-0 max-h-full max-w-full m-auto object-contain p-2 md:p-3 opacity-0 transition-all duration-500 ease-out group-hover/card:opacity-100 group-hover/card:scale-105"
                 loading="lazy"
+                decoding="async"
               />
             )}
 
