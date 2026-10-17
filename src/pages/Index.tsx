@@ -1,6 +1,7 @@
 import Header from '@/components/navigation/Header';
 import Hero from '@/components/sections/Hero';
 import FeaturedProducts from '@/components/sections/FeaturedProducts';
+import NewArrivalsPopup from '@/components/sections/NewArrivalsPopup';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/ui/scroll-to-top';
 import WhatsAppButton from '@/components/ui/WhatsAppButton';
@@ -14,6 +15,7 @@ const Index = () => {
         <Hero />
         <FeaturedProducts />
       </main>
+      <NewArrivalsPopup />
       <Footer />
       <ScrollToTop />
       <WhatsAppButton />
