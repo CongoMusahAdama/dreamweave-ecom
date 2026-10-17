@@ -9,6 +9,7 @@ interface ScrollRevealProps {
   className?: string;
   variant?: RevealVariant;
   delay?: number;
+  rootMargin?: string;
 }
 
 const variantClass: Record<RevealVariant, string> = {
@@ -23,8 +24,9 @@ const ScrollReveal = ({
   className,
   variant = 'fade-up',
   delay = 0,
+  rootMargin,
 }: ScrollRevealProps) => {
-  const { ref, isVisible } = useScrollReveal<HTMLDivElement>();
+  const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ rootMargin });
 
   const style = delay ? ({ ['--reveal-delay' as string]: `${delay}ms` } as CSSProperties) : undefined;
 

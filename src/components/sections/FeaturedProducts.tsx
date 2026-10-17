@@ -43,7 +43,7 @@ const FeaturedProducts = () => {
       )}
     >
       <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8">
-        <ScrollReveal variant="fade-up" className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-8 sm:mb-12 border-b border-black/10 pb-5 sm:pb-6">
+        <ScrollReveal variant="fade-up" rootMargin="0px" className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-8 sm:mb-12 border-b border-black/10 pb-5 sm:pb-6">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/40">
             Latest drops
           </p>

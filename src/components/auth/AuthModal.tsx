@@ -166,18 +166,23 @@ const AuthModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white w-full max-w-md border border-black shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-black/10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-3 py-4 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="mx-auto flex w-full max-w-md flex-col border border-black bg-white shadow-xl max-sm:min-h-[min(100dvh-2rem,44rem)] max-sm:w-[min(100vw-1.5rem,28rem)] max-sm:max-h-[calc(100dvh-2rem)] sm:max-h-[min(100dvh-2rem,48rem)]">
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-4 sm:px-6 sm:py-5">
           <h2 className="text-sm font-bold tracking-[0.15em] uppercase text-black">
             {isLogin ? 'Sign in' : 'Create account'}
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-black hover:bg-black/5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-9 w-9 shrink-0 p-0 text-black hover:bg-black/5"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6">
           {error && (
             <div className="border border-red-300 bg-red-50 text-red-700 px-4 py-3 text-[10px] font-bold uppercase tracking-wider">
               {error}
@@ -198,7 +203,7 @@ const AuthModal = ({
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="Your name"
-                  className="pl-10 rounded-none border-black"
+                  className="h-11 pl-10 rounded-none border-black text-sm"
                   autoComplete="name"
                 />
               </div>
@@ -218,7 +223,7 @@ const AuthModal = ({
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="you@email.com"
-                className="pl-10 rounded-none border-black"
+                className="h-11 pl-10 rounded-none border-black text-sm"
                 autoComplete="email"
                 required
               />
@@ -239,7 +244,7 @@ const AuthModal = ({
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+233 20 123 4567"
-                  className="pl-10 rounded-none border-black"
+                  className="h-11 pl-10 rounded-none border-black text-sm"
                   autoComplete="tel"
                   required
                 />
@@ -263,7 +268,7 @@ const AuthModal = ({
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="Min. 6 characters"
-                className="pl-10 pr-10 rounded-none border-black"
+                className="h-11 pl-10 pr-10 rounded-none border-black text-sm"
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
               />
@@ -271,7 +276,7 @@ const AuthModal = ({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
@@ -300,7 +305,7 @@ const AuthModal = ({
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="Re-enter password"
-                  className="pl-10 pr-10 rounded-none border-black"
+                  className="h-11 pl-10 pr-10 rounded-none border-black text-sm"
                   autoComplete="new-password"
                   required
                 />
@@ -308,7 +313,7 @@ const AuthModal = ({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? (
@@ -330,7 +335,7 @@ const AuthModal = ({
           </Button>
         </form>
 
-        <div className="px-6 py-4 border-t border-black/10 bg-black/[0.02]">
+        <div className="border-t border-black/10 bg-black/[0.02] px-4 py-4 sm:px-6">
           <p className="text-center text-[10px] font-bold tracking-[0.12em] uppercase text-black/50">
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
             <button type="button" onClick={toggleMode} className="text-black underline underline-offset-2">

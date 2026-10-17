@@ -123,8 +123,11 @@ app.use('/api/settings', settingsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
+  res.status(dbState === 1 ? 200 : 503).json({ 
+    status: dbState === 1 ? 'OK' : 'DEGRADED',
+    database: dbStatus,
     message: 'HARV DREAMS API is running',
     timestamp: new Date().toISOString()
   });
@@ -184,11 +187,26 @@ if (
   process.exit(1);
 }
 
-mongoose.connect(process.env.MONGODB_URI, {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 10_000,
-})
-  .then(async () => {
+// ── Start the Express server immediately so frontend never gets ERR_CONNECTION_REFUSED ──
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+});
+
+// ── MongoDB connection with retry logic ──
+const RETRY_DELAY_MS = 15_000; // retry every 15s indefinitely
+
+async function connectWithRetry(attempt = 1) {
+  try {
+    console.log(`🔄 MongoDB connection attempt ${attempt}...`);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 15_000,
+      socketTimeoutMS: 45_000,
+      family: 4,
+    });
     console.log('✅ Connected to MongoDB');
     await ensureDefaultCategories();
     await warnIfCloudinaryMisconfigured();
@@ -200,7 +218,7 @@ mongoose.connect(process.env.MONGODB_URI, {
         console.log('✅ Paystack configured (TEST mode)');
       } else {
         console.warn(
-          `⚠️  Paystack key mismatch — public=${paystackKeys.publicMode}, secret=${paystackKeys.secretMode}. Checkout may show the wrong mode.`
+          `⚠️  Paystack key mismatch — public=${paystackKeys.publicMode}, secret=${paystackKeys.secretMode}.`
         );
       }
     } else {
@@ -219,19 +237,14 @@ mongoose.connect(process.env.MONGODB_URI, {
     } else {
       console.warn('⚠️  Mnotify not configured — add MNOTIFY_API_KEY and MNOTIFY_SENDER_ID to backend/.env');
     }
+  } catch (err) {
+    console.error(`❌ MongoDB attempt ${attempt} failed: ${err.message}`);
+    console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+    setTimeout(() => connectWithRetry(attempt + 1), RETRY_DELAY_MS);
+  }
+}
 
-    // Start server
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-      console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
-    });
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
+connectWithRetry();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

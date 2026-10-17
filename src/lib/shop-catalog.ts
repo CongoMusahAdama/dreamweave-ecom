@@ -100,6 +100,31 @@ export function sortShopProductsNewestFirst(products: ShopProduct[]): ShopProduc
 
 export type ShopProductWithMongo = ShopProduct & { mongoId?: string };
 
+/* ── localStorage cache for instant page loads ── */
+
+const CATALOG_CACHE_KEY = 'harv_product_cache';
+
+function loadCachedCatalog(): ShopProduct[] {
+  try {
+    const raw = localStorage.getItem(CATALOG_CACHE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as ShopProduct[];
+  } catch {
+    return [];
+  }
+}
+
+function saveCatalogToCache(products: ShopProduct[]) {
+  try {
+    localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(products));
+  } catch {
+    // storage full or unavailable — ignore
+  }
+}
+
+// Hydrate from cache immediately so products show on first render
+apiCatalog = loadCachedCatalog();
+
 export async function fetchApiCatalog(): Promise<ShopProduct[]> {
   try {
     const res = await apiFetch<{
@@ -112,10 +137,14 @@ export async function fetchApiCatalog(): Promise<ShopProduct[]> {
       .filter((p): p is ShopProduct => Boolean(p));
 
     apiCatalog = mapped;
+    saveCatalogToCache(mapped);
     return mapped;
   } catch {
-    apiCatalog = [];
-    return [];
+    // Keep cached products if API fails — don't wipe them
+    if (apiCatalog.length === 0) {
+      apiCatalog = loadCachedCatalog();
+    }
+    return apiCatalog;
   }
 }
 

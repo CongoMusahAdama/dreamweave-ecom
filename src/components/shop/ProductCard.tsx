@@ -15,7 +15,7 @@ interface ProductCardProps {
 const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
   const { getLabel: getCategoryLabel } = useCategories();
   const isSoldOut = product.stock === 0;
-  const staggerDelay = Math.min(index * 70, 560);
+  const staggerDelay = 0;
   const gallery = getProductGalleryImages(product);
   const frontImage = gallery[0]?.url;
   const backImage = gallery.length > 1 ? gallery[1]?.url : null;
