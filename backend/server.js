@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Import routes
@@ -25,6 +26,9 @@ const settingsRoutes = require('./routes/settings');
 const { ensureDefaultCategories } = require('./lib/categories');
 
 const app = express();
+
+// Behind Render/Vercel proxies — needed so rate limits key on the real client IP
+app.set('trust proxy', 1);
 
 // Security middleware — allow shop/admin on another origin to load /uploads images
 app.use(
@@ -85,6 +89,18 @@ app.use('/api/', limiter);
 
 // Logging middleware
 app.use(morgan('combined'));
+
+// Serverless (Vercel): no long-running connect loop, so connect before handling each request
+if (process.env.VERCEL) {
+  app.use(async (req, res, next) => {
+    try {
+      await connectDb();
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 // Paystack webhook needs raw body for signature verification
 app.post(
@@ -152,8 +168,8 @@ app.use('/api/*', (req, res) => {
 });
 
 // Production: serve Vite build (combined Render deploy)
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '..', 'dist');
+const distPath = path.join(__dirname, '..', 'dist');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
@@ -187,28 +203,37 @@ if (
   process.exit(1);
 }
 
-// ── Start the Express server immediately so frontend never gets ERR_CONNECTION_REFUSED ──
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
-});
-
 // ── MongoDB connection with retry logic ──
 const RETRY_DELAY_MS = 15_000; // retry every 15s indefinitely
+
+async function connectMongo() {
+  await mongoose.connect(process.env.MONGODB_URI, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 15_000,
+    socketTimeoutMS: 45_000,
+    family: 4,
+  });
+  console.log('✅ Connected to MongoDB');
+  await ensureDefaultCategories();
+}
+
+// Serverless: one shared connection per warm instance; a failed attempt is retried on the next request
+let dbPromise = null;
+function connectDb() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  if (!dbPromise) {
+    dbPromise = connectMongo().catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
+  }
+  return dbPromise;
+}
 
 async function connectWithRetry(attempt = 1) {
   try {
     console.log(`🔄 MongoDB connection attempt ${attempt}...`);
-    await mongoose.connect(process.env.MONGODB_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 15_000,
-      socketTimeoutMS: 45_000,
-      family: 4,
-    });
-    console.log('✅ Connected to MongoDB');
-    await ensureDefaultCategories();
+    await connectMongo();
     await warnIfCloudinaryMisconfigured();
     if (isPaystackConfigured()) {
       const paystackKeys = getPaystackKeyStatus();
@@ -244,15 +269,26 @@ async function connectWithRetry(attempt = 1) {
   }
 }
 
-connectWithRetry();
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  mongoose.connection.close(() => {
-    console.log('MongoDB connection closed');
-    process.exit(0);
+// Long-running server (local / Render). On Vercel the app is exported and connectDb runs per request.
+if (!process.env.VERCEL) {
+  // Start the Express server immediately so frontend never gets ERR_CONNECTION_REFUSED
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   });
-});
+
+  connectWithRetry();
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    mongoose.connection.close(() => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+}
 
 module.exports = app;

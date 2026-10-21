@@ -4,7 +4,10 @@ const multer = require('multer');
 const { configureCloudinary } = require('../lib/cloudinaryClient');
 const { MAX_UPLOAD_BYTES, MAX_PRODUCT_IMAGES } = require('../lib/constants');
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+// Vercel's filesystem is read-only except /tmp — temp files there are pushed to Cloudinary
+const UPLOAD_DIR = process.env.VERCEL
+  ? path.join(require('os').tmpdir(), 'uploads')
+  : path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
