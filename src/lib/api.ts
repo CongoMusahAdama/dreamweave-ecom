@@ -1,4 +1,10 @@
-const envApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+// The Render API is retired — old builds (e.g. the Netlify site, still reached while DNS
+// propagates) may carry its URL, so send them to the Vercel API instead
+const envApiUrl = rawApiUrl?.includes('.onrender.com')
+  ? 'https://harv-dreams-api.vercel.app'
+  : rawApiUrl;
 
 /** Same-origin on Render (combined deploy); override with VITE_API_URL for split deploy */
 export const API_BASE =
