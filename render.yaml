@@ -1,5 +1,5 @@
-# HARV DREAMS — Render API (frontend hosted on Netlify)
-# Set FRONTEND_URL to your Netlify URL. On Netlify set VITE_API_URL to this service URL.
+# HARV DREAMS — Render API (frontend hosted on Vercel)
+# Set FRONTEND_URL to your Vercel URL. On Vercel set VITE_API_URL to this service URL.
 
 services:
   - type: web

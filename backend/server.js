@@ -47,7 +47,7 @@ app.use(cors({
       callback(null, true);
       return;
     }
-    if (origin.endsWith('.onrender.com') || origin.endsWith('.netlify.app')) {
+    if (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app') || origin.endsWith('.netlify.app')) {
       callback(null, true);
       return;
     }

@@ -11,7 +11,7 @@ function publicApiBase() {
   return `http://localhost:${port}`;
 }
 
-/** Where /uploads images are served (Netlify in production, API locally) */
+/** Where /uploads images are served (Vercel in production, API locally) */
 function uploadsPublicBase() {
   if (process.env.FRONTEND_URL) {
     return process.env.FRONTEND_URL.replace(/\/$/, '');

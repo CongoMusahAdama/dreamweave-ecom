@@ -24,7 +24,7 @@ export function productImageUrl(path?: string | null) {
 
   if (path.startsWith('https://res.cloudinary.com/')) return path;
 
-  // Legacy Render /uploads URLs — files are served from the Netlify site
+  // Legacy Render /uploads URLs — files are served from the Vercel site
   if (path.includes('.onrender.com/uploads/')) {
     const legacyPath = extractUploadsPath(path);
     if (legacyPath) {
@@ -44,7 +44,7 @@ export function productImageUrl(path?: string | null) {
     return uploadsPath;
   }
 
-  // Relative /uploads paths — serve from site (Netlify public/uploads), not Render API
+  // Relative /uploads paths — serve from site (Vercel public/uploads), not Render API
   if (uploadsPath) {
     return joinBase(siteOrigin(), uploadsPath);
   }
@@ -53,7 +53,7 @@ export function productImageUrl(path?: string | null) {
   return normalized;
 }
 
-/** Legacy /uploads URLs stored before Cloudinary — often missing on Netlify */
+/** Legacy /uploads URLs stored before Cloudinary — often missing on Vercel */
 export function isLegacyLocalUpload(path?: string | null) {
   if (!path) return false;
   if (path.startsWith('https://res.cloudinary.com/')) return false;
