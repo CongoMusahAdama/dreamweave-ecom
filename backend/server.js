@@ -39,6 +39,8 @@ app.use(
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.RENDER_EXTERNAL_URL,
+  'https://harvdreams.com',
+  'https://www.harvdreams.com',
   'http://localhost:5173',
   'http://localhost:8080',
   'http://127.0.0.1:5173',
