@@ -30,31 +30,25 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
         className={cn('flex flex-col items-center text-center w-full', className)}
       >
         <Link
-          to={isSoldOut ? '#' : `/products/${product.id}`}
-          className={cn(
-            'w-full flex flex-col items-center group touch-manipulation',
-            isSoldOut && 'pointer-events-none'
-          )}
-          onClick={(e) => isSoldOut && e.preventDefault()}
+          to={`/products/${product.id}`}
+          className="w-full flex flex-col items-center group touch-manipulation"
         >
           <div className="relative w-full aspect-square bg-white mb-3 md:mb-4 flex items-center justify-center overflow-hidden rounded-sm group/card">
-            {!isSoldOut && (
-              <div className="absolute top-2 right-2 z-10 pointer-events-auto">
-                <WishlistButton productId={product.id} size="sm" />
-              </div>
-            )}
+            <div className="absolute top-2 right-2 z-10 pointer-events-auto">
+              <WishlistButton productId={product.id} size="sm" />
+            </div>
             <img
               src={frontImage}
               alt={product.name}
               className={cn(
                 'max-h-full max-w-full w-full h-full object-contain p-2 md:p-3 transition-all duration-500 ease-out',
-                hasBackView && !isSoldOut && 'group-hover/card:opacity-0 group-hover/card:scale-105'
+                hasBackView && 'group-hover/card:opacity-0 group-hover/card:scale-105'
               )}
               loading={shouldPrioritizeImage ? 'eager' : 'lazy'}
               fetchPriority={shouldPrioritizeImage ? 'high' : 'auto'}
               decoding="async"
             />
-            {hasBackView && !isSoldOut && (
+            {hasBackView && (
               <img
                 src={backImage!}
                 alt=""
@@ -65,27 +59,24 @@ const ProductCard = ({ product, index = 0, className }: ProductCardProps) => {
             )}
 
             {isSoldOut && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 bg-white/80">
-                <span className="bg-black text-white text-[9px] md:text-[10px] font-bold tracking-[0.2em] uppercase px-4 py-3 min-w-[90px] text-center leading-tight">
-                  Sold Out
-                </span>
-              </div>
+              <span className="absolute top-2 left-2 z-20 pointer-events-none bg-black text-white text-[8px] md:text-[9px] font-bold tracking-[0.2em] uppercase px-2.5 py-1.5 leading-none">
+                Sold Out
+              </span>
             )}
           </div>
         </Link>
 
-        <Link
-          to={isSoldOut ? '#' : `/products/${product.id}`}
-          className={cn('w-full touch-manipulation', isSoldOut && 'pointer-events-none')}
-          onClick={(e) => isSoldOut && e.preventDefault()}
-        >
+        <Link to={`/products/${product.id}`} className="w-full touch-manipulation">
           <p className="text-[9px] font-bold tracking-[0.18em] uppercase text-black/40 mb-1">
             {getCategoryLabel(product.category)}
           </p>
           <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-black mb-1 md:mb-1.5 w-full group-hover:opacity-60 transition-opacity leading-snug px-1">
             {product.name}
           </h3>
-          <p className="text-[12px] md:text-[13px] font-bold text-black">{product.price}</p>
+          <p className="text-[12px] md:text-[13px] font-bold text-black">
+            {product.price}
+            {isSoldOut && <span className="ml-1.5 text-black/40">· Sold out</span>}
+          </p>
         </Link>
       </ScrollReveal>
     </article>

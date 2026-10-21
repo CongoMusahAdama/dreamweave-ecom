@@ -107,12 +107,9 @@ const NewArrivalsPopup = () => {
             return (
               <Link
                 key={product.id}
-                to={isSoldOut ? '#' : `/products/${product.id}`}
+                to={`/products/${product.id}`}
                 onClick={close}
-                className={cn(
-                  'group bg-white flex flex-col items-center text-center p-4 transition-colors hover:bg-black/[0.02]',
-                  isSoldOut && 'pointer-events-none'
-                )}
+                className="group bg-white flex flex-col items-center text-center p-4 transition-colors hover:bg-black/[0.02]"
               >
                 <div className="relative w-full aspect-square mb-3 overflow-hidden bg-white flex items-center justify-center">
                   <img
@@ -122,11 +119,9 @@ const NewArrivalsPopup = () => {
                     loading="eager"
                   />
                   {isSoldOut && (
-                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                      <span className="text-[8px] font-bold tracking-[0.2em] uppercase bg-black text-white px-3 py-1.5">
-                        Sold Out
-                      </span>
-                    </div>
+                    <span className="absolute top-1 left-1 text-[7px] font-bold tracking-[0.2em] uppercase bg-black text-white px-2 py-1 leading-none">
+                      Sold Out
+                    </span>
                   )}
                 </div>
                 <p className="text-[8px] font-bold tracking-[0.18em] uppercase text-black/40 mb-0.5 truncate w-full">

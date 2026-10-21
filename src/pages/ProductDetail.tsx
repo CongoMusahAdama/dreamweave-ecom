@@ -194,10 +194,13 @@ const ProductDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_minmax(280px,1fr)] gap-4 sm:gap-5 lg:gap-6 lg:items-start">
             <div className="w-full min-w-0 lg:max-w-none">
               <div className="relative w-full">
-                {!isSoldOut && (
-                  <div className="absolute top-1 right-1 z-10">
-                    <WishlistButton productId={product.id} />
-                  </div>
+                <div className="absolute top-1 right-1 z-10">
+                  <WishlistButton productId={product.id} />
+                </div>
+                {isSoldOut && (
+                  <span className="absolute top-1 left-1 z-10 pointer-events-none bg-black text-white text-[9px] font-bold tracking-[0.2em] uppercase px-3 py-2 leading-none">
+                    Sold Out
+                  </span>
                 )}
                 <ProductImageFlip
                   images={imageUrls}
@@ -256,9 +259,18 @@ const ProductDetail = () => {
               <div className="hidden lg:block mb-2">{productMeta}</div>
 
               {isSoldOut ? (
-                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-black/50">
-                  Sold out
-                </p>
+                <div className="mt-3 space-y-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full min-h-[48px] bg-black/10 text-black/50 text-[10px] font-bold tracking-[0.2em] uppercase cursor-not-allowed"
+                  >
+                    Sold out
+                  </button>
+                  <p className="text-[10px] font-bold text-black/50 leading-relaxed">
+                    This item is sold out and can't be ordered right now.
+                  </p>
+                </div>
               ) : (
                 <div id="product-purchase">{purchasePanel}</div>
               )}
