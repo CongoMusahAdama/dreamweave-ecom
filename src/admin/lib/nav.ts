@@ -6,6 +6,7 @@ import {
   FileText,
   Settings,
   Users,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export type AdminNavItem = {
 
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Overview', short: 'Home', icon: LayoutDashboard, exact: true },
+  { href: '/admin/analytics', label: 'Site analytics', short: 'Visits', icon: BarChart3 },
   { href: '/admin/orders', label: 'Manage orders', short: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', short: 'People', icon: Users },
   { href: '/admin/receipts', label: 'Order receipts', short: 'Receipts', icon: FileText },

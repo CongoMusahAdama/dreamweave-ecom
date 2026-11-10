@@ -11,6 +11,7 @@ import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import { PaystackProvider } from './contexts/PaystackContext';
 import AuthModal from './components/auth/AuthModal';
 import ErrorBoundary from './components/ui/error-boundary';
+import SiteTracker from './components/analytics/SiteTracker';
 
 import Home from './pages/Index';
 import Products from './pages/Products';
@@ -31,6 +32,7 @@ const AdminGallery = lazy(() => import('./admin/pages/Gallery'));
 const AdminReceipts = lazy(() => import('./admin/pages/Receipts'));
 const AdminCustomers = lazy(() => import('./admin/pages/Customers'));
 const AdminSettings = lazy(() => import('./admin/pages/Settings'));
+const AdminAnalytics = lazy(() => import('./admin/pages/Analytics'));
 
 const AdminFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-white">
@@ -111,6 +113,7 @@ const ProtectedRoute = ({
 const AppContent = () => (
   <Router>
     <RouteScrollToTop />
+    <SiteTracker />
     <CartProvider>
       <SiteSettingsProvider>
       <CategoriesProvider>
@@ -202,7 +205,16 @@ const AppContent = () => (
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
+                    <Route
+                      path="/admin/analytics"
+                      element={
+                        <ProtectedRoute requireAuth requireAdmin>
+                          <Suspense fallback={<AdminFallback />}>
+                            <AdminAnalytics />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route
                       path="/admin/settings"
                       element={

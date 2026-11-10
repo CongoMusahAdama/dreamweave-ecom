@@ -23,6 +23,7 @@ const { isMnotifyConfigured } = require('./lib/mnotify');
 const galleryRoutes = require('./routes/gallery');
 const categoryRoutes = require('./routes/categories');
 const settingsRoutes = require('./routes/settings');
+const analyticsRoutes = require('./routes/analytics');
 const { ensureDefaultCategories } = require('./lib/categories');
 
 const app = express();
@@ -86,8 +87,18 @@ const limiter = rateLimit({
   max: API_RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  // Page-view beacons have their own limiter so browsing never eats the shopper's API budget
+  skip: (req) => req.path === '/analytics/track',
 });
 app.use('/api/', limiter);
+
+const trackLimiter = rateLimit({
+  windowMs: API_RATE_LIMIT_WINDOW_MS,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/analytics/track', trackLimiter);
 
 // Logging middleware
 app.use(morgan('combined'));
@@ -138,6 +149,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

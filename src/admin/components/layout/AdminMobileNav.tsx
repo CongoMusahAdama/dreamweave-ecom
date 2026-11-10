@@ -10,7 +10,7 @@ const AdminMobileNav = () => {
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-black/10 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
       aria-label="Admin quick navigation"
     >
-      <div className="grid grid-cols-5 max-w-lg mx-auto">
+      <div className="grid grid-cols-4 max-w-lg mx-auto">
         {ADMIN_NAV.map((item) => {
           const Icon = item.icon;
           const active = isAdminNavActive(location.pathname, item.href, item.exact);
