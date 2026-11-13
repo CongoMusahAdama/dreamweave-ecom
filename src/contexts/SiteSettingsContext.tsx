@@ -32,6 +32,8 @@ import { productImageUrl } from '@/lib/productImage';
 type SiteSettingsContextValue = {
   settings: SiteSettings;
   loading: boolean;
+  /** Real settings are known (cached or fetched) — safe to show hero/logo images. */
+  ready: boolean;
   refresh: () => Promise<void>;
   logoSrc: string;
   logoSrcSet: string | undefined;
@@ -64,9 +66,32 @@ const defaultSettings: SiteSettings = {
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null);
 
+const SETTINGS_CACHE_KEY = 'hd_site_settings';
+
+/** Last settings this browser saw — lets the hero/logo render correctly before the API answers. */
+function readCachedSettings(): SiteSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+    return raw ? { ...defaultSettings, ...(JSON.parse(raw) as SiteSettings) } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSettings(settings: SiteSettings) {
+  try {
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+  } catch {
+    /* storage unavailable — fine, we just won't have a warm start */
+  }
+}
+
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
+  const [cached] = useState(readCachedSettings);
+  const [settings, setSettings] = useState<SiteSettings>(() => cached || defaultSettings);
   const [loading, setLoading] = useState(true);
+  /** True once we know the real settings (from cache or the API) — avoids flashing defaults. */
+  const [ready, setReady] = useState(Boolean(cached));
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -75,11 +100,15 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         success: boolean;
         data: { settings: SiteSettings };
       }>('/api/settings');
-      setSettings(res.data.settings || defaultSettings);
+      const next = res.data.settings || defaultSettings;
+      setSettings(next);
+      writeCachedSettings(next);
     } catch {
-      setSettings(defaultSettings);
+      // Keep whatever we already show (cache) rather than reverting to defaults
+      setSettings((prev) => prev || defaultSettings);
     } finally {
       setLoading(false);
+      setReady(true);
     }
   }, []);
 
@@ -106,6 +135,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     return {
       settings,
       loading,
+      ready,
       refresh,
       logoSrc: hasCustomLogo ? settings.logoUrl : SITE_LOGO_NAV,
       logoSrcSet: hasCustomLogo ? undefined : `${SITE_LOGO_NAV} 1x, ${SITE_LOGO_NAV_2X} 2x`,
@@ -121,7 +151,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       storePhone: settings.storePhone?.trim() || '',
       storeCity: resolveStoreCity(settings.storeCity),
     };
-  }, [settings, loading, refresh]);
+  }, [settings, loading, ready, refresh]);
 
   return (
     <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>

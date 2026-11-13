@@ -20,13 +20,19 @@ type SiteLogoProps = {
 let introPlayed = false;
 
 const SiteLogo = ({ variant = 'light', size = 'nav', className, animateIntro = false }: SiteLogoProps) => {
-  const { logoSrc, logoSrcSet, logoAlt, logoWidth, logoHeight } = useSiteSettings();
+  const { logoSrc, logoSrcSet, logoAlt, logoWidth, logoHeight, ready } = useSiteSettings();
   const isNav = size === 'nav';
   const [playIntro] = useState(() => animateIntro && !introPlayed);
 
   useEffect(() => {
-    if (playIntro) introPlayed = true;
-  }, [playIntro]);
+    if (playIntro && ready) introPlayed = true;
+  }, [playIntro, ready]);
+
+  // Until we know whether a custom logo is set, keep the space but show nothing —
+  // otherwise the built-in logo flashes before the admin-uploaded one.
+  if (!ready) {
+    return <span aria-hidden className={cn('block w-auto', className)} />;
+  }
 
   return (
     <img
