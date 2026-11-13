@@ -374,3 +374,35 @@
 .safe-area-pb {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
+
+/* Header logo intro — soft left-to-right reveal that sharpens into place (once per page load) */
+@keyframes logoIntro {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+    filter: blur(8px);
+    clip-path: inset(0 100% 0 0);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.logo-intro {
+  animation: logoIntro 1.3s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  will-change: transform, opacity, filter, clip-path;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-intro {
+    animation: none;
+  }
+}

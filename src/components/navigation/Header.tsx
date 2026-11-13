@@ -145,6 +145,7 @@ const Header = ({ variant = 'solid' }: HeaderProps) => {
         <Link to="/" className="mb-0 md:mb-7">
           <SiteLogo
             variant={useLightText ? 'hero' : 'light'}
+            animateIntro
             className="h-12 sm:h-14 md:h-[5.75rem] lg:h-28 mx-auto transition-all duration-300"
           />
         </Link>

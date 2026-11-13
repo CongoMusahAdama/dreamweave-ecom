@@ -91,6 +91,7 @@ const ShopHeader = ({ cartCount = 0 }: ShopHeaderProps) => {
         <Link to="/" className="mb-0 md:mb-4 lg:mb-6 block">
           <SiteLogo
             variant="light"
+            animateIntro
             className="h-12 sm:h-14 md:h-[5rem] lg:h-24 xl:h-28 mx-auto"
           />
         </Link>
