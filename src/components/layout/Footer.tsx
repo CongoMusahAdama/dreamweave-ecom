@@ -25,14 +25,14 @@ const Footer = () => {
   const year = new Date().getFullYear();
   const { storeEmail, storeCity } = useSiteSettings();
   return (
-    <footer className="bg-army-green-dark text-white pt-24 pb-12 border-t border-black/20">
+    <footer className="bg-army-green-dark text-white pt-10 pb-6 md:pt-14 md:pb-8 border-t border-black/20">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-8 mb-24">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 lg:gap-8 mb-8 md:mb-10">
           
           {/* Brand Section */}
-          <div className="lg:col-span-1">
-            <Link to="/" className="inline-block mb-8">
-              <SiteLogo variant="dark" className="h-12 md:h-14 max-w-[220px]" />
+          <div className="col-span-2 lg:col-span-1">
+            <Link to="/" className="inline-block mb-4">
+              <SiteLogo variant="dark" className="h-10 md:h-12 max-w-[200px]" />
             </Link>
             <div className="flex items-center gap-6">
               <a
@@ -67,8 +67,8 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-8 text-white/40">Collections</h3>
-            <ul className="space-y-4">
+            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4 text-white/40">Collections</h3>
+            <ul className="space-y-2.5">
               <li><Link to="/products" className="text-sm hover:text-white/60 transition-colors">All Products</Link></li>
               <li><Link to="/products?category=tees" className="text-sm hover:text-white/60 transition-colors">Tees</Link></li>
               <li><Link to="/products?category=longsleeves" className="text-sm hover:text-white/60 transition-colors">Long Sleeves</Link></li>
@@ -79,8 +79,8 @@ const Footer = () => {
 
           {/* Support */}
           <div>
-            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-8 text-white/40">Information</h3>
-            <ul className="space-y-4">
+            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4 text-white/40">Information</h3>
+            <ul className="space-y-2.5">
               <li><Link to="/gallery" className="text-sm hover:text-white/60 transition-colors">Gallery</Link></li>
               <li><Link to="/shipping" className="text-sm hover:text-white/60 transition-colors">Shipping & Delivery</Link></li>
               <li><Link to="/shipping#returns" className="text-sm hover:text-white/60 transition-colors">Returns & Exchanges</Link></li>
@@ -89,9 +89,9 @@ const Footer = () => {
           </div>
 
           {/* Newsletter Section */}
-          <div>
-            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-8 text-white/40">Newsletter</h3>
-            <p className="text-sm text-white/60 mb-6 leading-[1.7]">
+          <div className="col-span-2 lg:col-span-1">
+            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4 text-white/40">Newsletter</h3>
+            <p className="text-sm text-white/60 mb-4 leading-[1.6]">
               Join the dream. Subscribe for early access to drops and exclusive content.
             </p>
             <form className="relative">
@@ -111,43 +111,25 @@ const Footer = () => {
           </div>
         </div>
 
-        <nav className="flex flex-wrap items-center justify-center gap-6 md:gap-10 mb-10 pb-10 border-b border-white/5">
-          <Link
-            to="/privacy"
-            className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 hover:text-white transition-colors"
-          >
-            Privacy
-          </Link>
-          <Link
-            to="/shipping"
-            className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 hover:text-white transition-colors"
-          >
-            Shipping
-          </Link>
-          <a
-            href={`mailto:${storeEmail}`}
-            className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 hover:text-white transition-colors"
-          >
-            Contact
-          </a>
-        </nav>
-
-        <PaymentMethods variant="dark" className="mb-10" />
+        <PaymentMethods variant="dark" className="mb-6" />
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+        <div className="pt-5 border-t border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <p className="text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">
             © {year} HARV DREAMS. All rights reserved. Proudly Ghanaian.
           </p>
-          <div className="flex items-center space-x-8">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center text-[10px] tracking-[0.2em] text-white/30 uppercase">
               <MapPin className="w-3 h-3 mr-2" strokeWidth={1.5} />
               {storeCity}
             </div>
-            <div className="flex items-center text-[10px] tracking-[0.2em] text-white/30 uppercase">
+            <a
+              href={`mailto:${storeEmail}`}
+              className="flex items-center text-[10px] tracking-[0.2em] text-white/40 hover:text-white transition-colors uppercase"
+            >
               <Mail className="w-3 h-3 mr-2" strokeWidth={1.5} />
               {storeEmail}
-            </div>
+            </a>
           </div>
         </div>
       </div>
