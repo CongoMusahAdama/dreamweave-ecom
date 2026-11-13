@@ -34,7 +34,6 @@ type ProductPurchasePanelProps = {
   deliveryInitial?: Partial<DeliveryDetails> | null;
   isAuthenticated: boolean;
   lineTotal: number;
-  onWhatsApp: () => void;
   onPaystack: () => void;
   onSignIn: () => void;
   paystackLoading?: boolean;
@@ -49,7 +48,6 @@ const ProductPurchasePanel = ({
   deliveryInitial,
   isAuthenticated,
   lineTotal,
-  onWhatsApp,
   onPaystack,
   onSignIn,
   paystackLoading,
@@ -209,14 +207,10 @@ const ProductPurchasePanel = ({
       <CheckoutOptions
         isAuthenticated={isAuthenticated}
         paystackEnabled={paystackEnabled}
-        onWhatsApp={() => handleCheckout(onWhatsApp)}
-        onPaystack={() => handleCheckout(onPaystack)}
+        onCheckout={() => handleCheckout(onPaystack)}
         onSignIn={onSignIn}
-        whatsAppDisabled={!canCheckout}
-        paystackDisabled={!canCheckout}
-        paystackLoading={paystackLoading}
-        whatsAppLabel="Checkout on WhatsApp"
-        className="space-y-3"
+        disabled={!canCheckout}
+        loading={paystackLoading}
       />
 
       {/* Delivery collapses when saved — saves vertical space */}

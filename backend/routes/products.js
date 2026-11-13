@@ -32,7 +32,7 @@ async function appendUploadedImages(files) {
   return Promise.all(files.map((file) => resolveUploadedImageUrl(file, 'products')));
 }
 
-const ALLOWED_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']);
+const ALLOWED_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'One Size']);
 
 function parseSizesFromBody(sizesInput, stock = 0) {
   if (!sizesInput) return [];

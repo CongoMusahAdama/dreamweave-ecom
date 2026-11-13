@@ -368,7 +368,7 @@ const DeliveryDetailsForm = ({
 
       {embedded ? (
         <p className="text-[9px] font-bold tracking-[0.12em] uppercase text-black/40 leading-relaxed">
-          These details are included when you checkout on WhatsApp or Paystack.
+          These details are used to deliver your order after checkout.
         </p>
       ) : (
         <button

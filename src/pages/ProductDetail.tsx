@@ -12,7 +12,6 @@ import { getProductGalleryImages } from '@/lib/product-images';
 import ProductImageFlip from '@/components/shop/ProductImageFlip';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { buildSingleProductOrderMessage } from '@/lib/whatsapp';
 import { getDeliveryFromUser, isDeliveryComplete } from '@/lib/delivery';
 import { productUsesCustomColorInput, resolveColorPreference } from '@/lib/product-options';
 import WishlistButton from '@/components/shop/WishlistButton';
@@ -57,8 +56,6 @@ const ProductDetail = () => {
   const {
     deliveryModalOpen,
     setDeliveryModalOpen,
-    pendingChannel,
-    startWhatsAppCheckout,
     startPaystackCheckout,
     completeWithDelivery,
     paystackLoading,
@@ -110,7 +107,7 @@ const ProductDetail = () => {
     },
   ];
 
-  const runCheckout = (channel: 'whatsapp' | 'paystack') => {
+  const runCheckout = () => {
     setCheckoutError('');
     if (!canPurchase) {
       setCheckoutError('Select size and color to continue');
@@ -122,28 +119,14 @@ const ProductDetail = () => {
       return;
     }
 
-    const message = buildSingleProductOrderMessage(
-      product,
-      purchase.size,
-      purchase.quantity,
-      delivery,
-      { colorPreference: colorLabel }
-    );
-
-    if (channel === 'whatsapp') {
-      const result = startWhatsAppCheckout(message, orderItems(), lineTotal, { delivery });
-      if (result.needsAuth) setAuthOpen(true);
-      if (result.missingDelivery) setCheckoutError('Please complete delivery / pickup details');
-    } else {
-      if (!isAuthenticated) {
-        setAuthOpen(true);
-        return;
-      }
-      const result = startPaystackCheckout(orderItems(), lineTotal, { delivery });
-      if (result.needsAuth) setAuthOpen(true);
-      if (result.missingDelivery) setCheckoutError('Please complete delivery / pickup details');
-      if (result.needsDelivery) setDeliveryModalOpen(true);
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+      return;
     }
+    const result = startPaystackCheckout(orderItems(), lineTotal, { delivery });
+    if (result.needsAuth) setAuthOpen(true);
+    if (result.missingDelivery) setCheckoutError('Please complete delivery / pickup details');
+    if (result.needsDelivery) setDeliveryModalOpen(true);
   };
 
   const productMeta = (
@@ -170,8 +153,7 @@ const ProductDetail = () => {
       deliveryInitial={deliveryInitial}
       isAuthenticated={isAuthenticated}
       lineTotal={lineTotal}
-      onWhatsApp={() => runCheckout('whatsapp')}
-      onPaystack={() => runCheckout('paystack')}
+      onPaystack={runCheckout}
       onSignIn={() => setAuthOpen(true)}
       paystackLoading={paystackLoading}
       checkoutError={checkoutError}
@@ -310,7 +292,7 @@ const ProductDetail = () => {
         open={deliveryModalOpen}
         onClose={() => setDeliveryModalOpen(false)}
         saving={savingDelivery}
-        submitLabel={pendingChannel === 'paystack' ? 'Continue to Paystack' : 'Continue to WhatsApp'}
+        submitLabel="Continue to payment"
         subtitle="Complete delivery details to finish checkout."
         onSave={async (d) => {
           setSavingDelivery(true);

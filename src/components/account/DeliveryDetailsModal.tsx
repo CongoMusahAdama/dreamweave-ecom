@@ -20,7 +20,7 @@ const DeliveryDetailsModal = ({
   onClose,
   onSave,
   title = 'Delivery details',
-  subtitle = 'Add your delivery info so we can prefill WhatsApp checkout and track your order.',
+  subtitle = 'Add your delivery info so we can deliver and track your order.',
   saving = false,
   submitLabel = 'Continue to WhatsApp',
 }: DeliveryDetailsModalProps) => {

@@ -6,22 +6,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/components/auth/AuthModal';
 import CheckoutOptions from '@/components/shop/CheckoutOptions';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-import { buildCartOrderMessage } from '@/lib/whatsapp';
-import { getDeliveryFromUser } from '@/lib/delivery';
 import { useShopCheckout } from '@/hooks/useShopCheckout';
 import DeliveryDetailsModal from '@/components/account/DeliveryDetailsModal';
 
 const CartView = () => {
   const { cart, updateQuantity, removeFromCart, cartTotal } = useCart();
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [savingDelivery, setSavingDelivery] = useState(false);
   const {
     deliveryModalOpen,
     setDeliveryModalOpen,
-    pendingChannel,
-    startWhatsAppCheckout,
     startPaystackCheckout,
     completeWithDelivery,
     paystackLoading,
@@ -37,13 +33,6 @@ const CartView = () => {
       price: item.price,
       priceAmount: item.priceAmount,
     }));
-
-  const handleWhatsAppCheckout = () => {
-    if (cart.length === 0) return;
-    const delivery = getDeliveryFromUser(user);
-    const message = buildCartOrderMessage(cart, cartTotal, delivery);
-    startWhatsAppCheckout(message, cartOrderItems(), cartTotal);
-  };
 
   const handlePaystackCheckout = () => {
     if (cart.length === 0) return;
@@ -209,11 +198,9 @@ const CartView = () => {
             <CheckoutOptions
               isAuthenticated={isAuthenticated}
               paystackEnabled={paystackEnabled}
-              onWhatsApp={handleWhatsAppCheckout}
-              onPaystack={handlePaystackCheckout}
+              onCheckout={handlePaystackCheckout}
               onSignIn={openSignIn}
-              paystackLoading={paystackLoading}
-              whatsAppLabel="Checkout on WhatsApp"
+              loading={paystackLoading}
             />
           </div>
         </ScrollReveal>
@@ -223,12 +210,8 @@ const CartView = () => {
         open={deliveryModalOpen}
         onClose={() => setDeliveryModalOpen(false)}
         saving={savingDelivery}
-        submitLabel={pendingChannel === 'paystack' ? 'Continue to Paystack' : 'Continue to WhatsApp'}
-        subtitle={
-          pendingChannel === 'paystack'
-            ? 'Add your delivery details before card payment.'
-            : 'Add your delivery info so we can prefill WhatsApp checkout and track your order.'
-        }
+        submitLabel="Continue to payment"
+        subtitle="Add your delivery details before payment."
         onSave={async (delivery) => {
           setSavingDelivery(true);
           try {

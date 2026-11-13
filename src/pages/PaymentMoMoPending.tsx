@@ -57,7 +57,7 @@ const PaymentMoMoPending = () => {
           setStatus('failed');
           sweetError(
             'Payment timed out',
-            'No approval received within 3 minutes. Try again or use WhatsApp checkout.'
+            'No approval received within 3 minutes. Please try again or use a card.'
           );
         }
         return;

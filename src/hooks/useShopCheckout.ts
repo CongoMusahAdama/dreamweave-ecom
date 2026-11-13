@@ -160,7 +160,7 @@ export function useShopCheckout() {
       if (channel === 'paystack' && !paystackEnabled) {
         sweetError(
           'Card payment unavailable',
-          'Paystack is not configured yet. Please checkout on WhatsApp or sign in later.'
+          'Checkout is temporarily unavailable. Please try again shortly.'
         );
         return {};
       }
