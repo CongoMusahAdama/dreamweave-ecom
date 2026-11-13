@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getDeliveryFromUser, isDeliveryComplete } from '@/lib/delivery';
 import { productUsesCustomColorInput, resolveColorPreference } from '@/lib/product-options';
 import WishlistButton from '@/components/shop/WishlistButton';
+import RelatedProducts from '@/components/shop/RelatedProducts';
 import DeliveryDetailsModal from '@/components/account/DeliveryDetailsModal';
 import { useShopCheckout } from '@/hooks/useShopCheckout';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,13 @@ const ProductDetail = () => {
     colorCustom: '',
   });
   const [delivery, setDelivery] = useState<DeliveryDetails>(emptyDelivery);
+
+  // Tapping a related product reuses this page — start fresh for the new item
+  useEffect(() => {
+    setPurchase({ size: '', quantity: 1, colorChoice: '', colorCustom: '' });
+    setSelectedImage(0);
+    setCheckoutError('');
+  }, [productId]);
 
   const {
     deliveryModalOpen,
@@ -274,6 +282,8 @@ const ProductDetail = () => {
               ))}
             </ul>
           </div>
+
+          <RelatedProducts product={product} />
         </div>
       </main>
 
