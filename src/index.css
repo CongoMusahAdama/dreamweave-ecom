@@ -379,11 +379,11 @@
 @keyframes logoIntro {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.97);
-    filter: blur(8px);
+    transform: translateY(3px) scale(0.99);
+    filter: blur(2px);
     clip-path: inset(0 100% 0 0);
   }
-  55% {
+  70% {
     opacity: 1;
     filter: blur(0);
     clip-path: inset(0 0 0 0);
@@ -397,7 +397,7 @@
 }
 
 .logo-intro {
-  animation: logoIntro 1.3s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  animation: logoIntro 2.4s cubic-bezier(0.25, 0.1, 0.25, 1) 0.2s both;
   will-change: transform, opacity, filter, clip-path;
 }
 
